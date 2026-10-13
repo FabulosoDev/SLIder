@@ -1,5 +1,7 @@
 # SLIder for Android
 
+> **Credits:** This project is based on the original [SLI-Writer](https://github.com/Julienbxl/SLI-Writer) code by **Julienbxl**.
+
 SLIder reads compatible ISO15693 / NfcV tags and saves their contents as Flipper `.nfc` dumps. It does not modify NFC tags. The project is a standard Kotlin Android app and can be edited and built entirely from VS Code.
 
 ## What you need
