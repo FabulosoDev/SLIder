@@ -1,4 +1,4 @@
-package com.example.sliwriter
+package dev.fabuloso.slider
 
 object FlipperNfcSerializer {
     fun serialize(uid: ByteArray, data: ByteArray, blockCount: Int = 8, blockSize: Int = 4): String {

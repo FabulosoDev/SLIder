@@ -1,4 +1,4 @@
-package com.example.sliwriter
+package dev.fabuloso.slider
 
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
