@@ -175,7 +175,8 @@ class MainActivity : ComponentActivity() {
 
     private fun saveTag(record: StoredTagRecord) {
         pendingSaveUid = record.uidHex
-        val defaultName = "card_${record.uidHex}_${timestamp()}.nfc"
+        val uidPrefix = record.uid.toReversedHexCompact(byteCount = 4)
+        val defaultName = "${timestamp(record.readAt)}_${uidPrefix}.nfc"
         createReadFile.launch(defaultName)
     }
 
@@ -269,8 +270,8 @@ class MainActivity : ComponentActivity() {
         nfcAdapter?.disableForegroundDispatch(this)
     }
 
-    private fun timestamp(): String =
-        SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+    private fun timestamp(date: Date): String =
+        SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(date)
 
     private fun toast(message: Int) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()

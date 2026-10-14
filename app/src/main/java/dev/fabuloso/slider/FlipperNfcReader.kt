@@ -1,10 +1,13 @@
 package dev.fabuloso.slider
 
+import java.util.Date
+
 data class FlipperNfcData(
     val uid: ByteArray,
     val blockCount: Int,
     val blockSize: Int,
     val data: ByteArray,
+    val readAt: Date,
 )
 
 object FlipperNfcReader {
@@ -13,6 +16,7 @@ object FlipperNfcReader {
         uid: ByteArray,
         log: (String) -> Unit,
     ): FlipperNfcData {
+        val readAt = Date()
         log("Selecting tag...")
         transport.selectCard(uid)
         Thread.sleep(5)
@@ -34,6 +38,7 @@ object FlipperNfcReader {
             blockCount = blockCount,
             blockSize = blockSize,
             data = data,
+            readAt = readAt,
         )
     }
 }

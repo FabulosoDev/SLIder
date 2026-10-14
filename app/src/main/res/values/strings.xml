@@ -3,7 +3,6 @@
     <string name="app_name">SLIder</string>
     <string name="delete_all">Delete all</string>
     <string name="column_uid">UID</string>
-    <string name="column_data">Data</string>
     <string name="column_actions">Actions</string>
     <string name="save_tag">Save tag</string>
     <string name="delete_tag">Delete tag</string>

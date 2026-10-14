@@ -15,24 +15,12 @@
         android:id="@+id/txtUid"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_weight="1.0"
+        android:layout_weight="2.1"
         android:ellipsize="end"
         android:maxLines="1"
         android:paddingStart="0dp"
         android:paddingEnd="8dp"
         android:textColor="#202124"
-        android:textSize="16sp" />
-
-    <TextView
-        android:id="@+id/txtData"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1.1"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:paddingStart="0dp"
-        android:paddingEnd="8dp"
-        android:textColor="#5F6368"
         android:textSize="16sp" />
 
     <LinearLayout

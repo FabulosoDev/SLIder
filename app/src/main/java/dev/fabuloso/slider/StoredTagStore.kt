@@ -6,12 +6,14 @@ import android.util.Base64
 import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Date
 
 data class StoredTagRecord(
     val uid: ByteArray,
     val blockCount: Int,
     val blockSize: Int,
     val data: ByteArray,
+    val readAt: Date,
 ) {
     val uidHex: String
         get() = uid.toHexCompact()
@@ -22,6 +24,7 @@ data class StoredTagRecord(
             blockCount = data.blockCount,
             blockSize = data.blockSize,
             data = data.data.copyOf(),
+            readAt = Date(data.readAt.time),
         )
     }
 }
@@ -40,7 +43,9 @@ class StoredTagStore(context: Context) {
             val knownUids = mutableSetOf<String>()
             for (index in 0 until array.length()) {
                 try {
-                    val record = decode(array.getJSONObject(index))
+                    val json = array.getJSONObject(index)
+                    if (!json.has(FIELD_READ_AT)) needsRepair = true
+                    val record = decode(json)
                     if (knownUids.add(record.uidHex)) {
                         records += record
                     } else {
@@ -101,6 +106,7 @@ class StoredTagStore(context: Context) {
         put(FIELD_BLOCK_COUNT, record.blockCount)
         put(FIELD_BLOCK_SIZE, record.blockSize)
         put(FIELD_DATA, Base64.encodeToString(record.data, Base64.NO_WRAP))
+        put(FIELD_READ_AT, record.readAt.time)
     }
 
     private fun decode(json: JSONObject): StoredTagRecord {
@@ -109,6 +115,7 @@ class StoredTagStore(context: Context) {
             blockCount = json.getInt(FIELD_BLOCK_COUNT),
             blockSize = json.getInt(FIELD_BLOCK_SIZE),
             data = Base64.decode(json.getString(FIELD_DATA), Base64.DEFAULT),
+            readAt = Date(json.optLong(FIELD_READ_AT, System.currentTimeMillis())),
         )
         validate(record)
         return record
@@ -131,5 +138,6 @@ class StoredTagStore(context: Context) {
         private const val FIELD_BLOCK_COUNT = "blockCount"
         private const val FIELD_BLOCK_SIZE = "blockSize"
         private const val FIELD_DATA = "data"
+        private const val FIELD_READ_AT = "readAt"
     }
 }
