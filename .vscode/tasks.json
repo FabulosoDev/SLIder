@@ -6,10 +6,7 @@
       "type": "shell",
       "command": ".\\gradlew.bat",
       "args": [":app:assembleDebug", "--console=plain"],
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
+      "group": "build",
       "problemMatcher": []
     },
     {
@@ -32,6 +29,10 @@
       ],
       "dependsOn": "Android: install debug APK",
       "dependsOrder": "sequence",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
       "problemMatcher": []
     }
   ]
