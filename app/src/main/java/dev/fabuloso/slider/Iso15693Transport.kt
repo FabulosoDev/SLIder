@@ -3,7 +3,12 @@ package dev.fabuloso.slider
 import android.nfc.Tag
 import android.nfc.tech.NfcV
 
-class Iso15693Transport(tag: Tag) : AutoCloseable {
+class Iso15693Transport(
+    tag: Tag,
+    lowDataRate: Boolean = false
+) : AutoCloseable {
+    private val flags: Byte =
+        if (lowDataRate) 0x20 else 0x22
     private val nfcv: NfcV = NfcV.get(tag) ?: error("NfcV.get(tag) returned null")
 
     fun connect() { nfcv.connect() }
@@ -41,7 +46,7 @@ class Iso15693Transport(tag: Tag) : AutoCloseable {
 
     fun selectCard(uidMsb: ByteArray) {
         val frame = ByteArray(10)
-        frame[0] = 0x22
+        frame[0] = flags
         frame[1] = 0x25
         for (i in 0 until 8) frame[2 + i] = uidMsb[7 - i]
         transceiveCheckedWithRetry(frame, retries = 3, retryDelayMs = 10, opName = "SELECT")
@@ -50,7 +55,7 @@ class Iso15693Transport(tag: Tag) : AutoCloseable {
     fun getSystemInfoAddressed(uidMsb: ByteArray): Pair<Int, Int>? {
         return try {
             val frame = ByteArray(10)
-            frame[0] = 0x22
+            frame[0] = flags
             frame[1] = 0x2B
             for (i in 0 until 8) frame[2 + i] = uidMsb[7 - i]
             val resp = transceiveChecked(frame)
@@ -69,7 +74,7 @@ class Iso15693Transport(tag: Tag) : AutoCloseable {
 
     fun readBlockAddressed(uidMsb: ByteArray, blockNum: Int, blockSize: Int): ByteArray {
         val frame = ByteArray(11)
-        frame[0] = 0x22
+        frame[0] = flags
         frame[1] = 0x20
         for (i in 0 until 8) frame[2 + i] = uidMsb[7 - i]
         frame[10] = (blockNum and 0xFF).toByte()

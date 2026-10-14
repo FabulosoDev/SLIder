@@ -143,7 +143,7 @@ class MainActivity : ComponentActivity() {
         Log.i(TAG, "Reading UID ${currentUidMsb.toHexCompact()}")
 
         try {
-            val data = Iso15693Transport(tag).use { transport ->
+            val data = Iso15693Transport(tag, lowDataRate = true).use { transport ->
                 transport.connect()
                 FlipperNfcReader.read(transport, currentUidMsb) { Log.d(TAG, it) }
             }
