@@ -1,153 +1,102 @@
-# SLI Writer — Magic ISO15693 UID Writer
+# SLIder for Android
 
-I made a simple Flipper app to write **magic ISO15693 tags with changeable UID** using `.nfc` files.
-I also developed an **Android version** of the app, available as an `.apk`.
-Sadly it is impossible to read a tag in privacy mode due to Android limitations.
+> **Credits:** This project is based on the original [SLI-Writer](https://github.com/Julienbxl/SLI-Writer) code by **Julienbxl**.
 
----
+SLIder reads compatible ISO15693 / NfcV tags, keeps them in a persistent list, and saves their contents as Flipper `.nfc` dumps on request. It does not modify NFC tags. The project is a standard Kotlin Android app and can be edited and built entirely from VS Code.
 
-## 🏷️ Supported Tags
+## What you need
 
-### SLIX2 / ISO15693 (Magic UID)
+- Windows with JDK 17 or newer (`java -version`)
+- [Android SDK command-line tools](https://developer.android.com/tools) or the SDK installed by Android Studio
+- Android SDK Platform 36, Build Tools 36.0.0, and Platform Tools
+- A physical NFC-capable Android phone for testing (the Android emulator cannot test this app's NFC workflow)
 
-[rfidfriend.com](http://rfidfriend.com) in **normal** mode or [AliExpress — PiSwords](https://aliexpress.com/item/1005006949791537.html) in **special** mode.
+This repository includes the Gradle wrapper, so a system-wide Gradle installation is not needed.
 
-These are weird tags that need to be configured back to their original UID to unlock data write.
+## One-time Android SDK setup on Windows
 
-The old rectangulars tags were working fine with the **normal** mode - always try it first.
+If Android Studio is installed, use its SDK Manager to install **Android SDK Platform 36**, **Android SDK Build-Tools 36**, and **Android SDK Platform-Tools**. You can then close Android Studio and work in VS Code.
 
-Save the original UID (usually the same if you order several tags from the same batch) and use **Write Special**.
+For a command-line-only setup, extract Google's command-line tools so that this file exists:
 
-> ⚠️ **Back up the original UID — if you lose it, you will never be able to rewrite the tags.**
-
----
-
-### SLIX-L Tags
-
-[rfidfriend.com](http://rfidfriend.com) in **normal** mode.
-
----
-
-## ✍️ Write Sequence
-
-### Normal mode
-
-#### 1. Write data blocks
-- Command: `WRITE_SINGLE_BLOCK`
-- Mode: **non-addressed**
-- Flags: `0x02`
-
-#### 2. Write UID (Gen2 vendor commands)
-```
-02 E0 09 40 <uid_high>   → sets bytes 0–3
-02 E0 09 41 <uid_low>    → sets bytes 4–7
-```
-Equivalent to:
-```
-proxmark hf 15 csetuid -u <uid> --v2
+```text
+%LOCALAPPDATA%\Android\Sdk\cmdline-tools\latest\bin\sdkmanager.bat
 ```
 
----
+Then open PowerShell and run:
 
-### Special mode (TAG-it TI2048 / AliExpress batch)
-
-These tags require the original factory UID to be present before data blocks can be written.
-
-**Step 1 — Restore factory UID** *(skipped automatically if card already has it)*
-```
-02 E0 09 40 <factory_uid_high>
-02 E0 09 41 <factory_uid_low>
+```powershell
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+$env:Path += ";$env:ANDROID_HOME\platform-tools;$env:ANDROID_HOME\cmdline-tools\latest\bin"
+sdkmanager --licenses
+sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 ```
 
-**Step 2 — Write data blocks (addressed + option flag)**
-- Command: `WRITE_SINGLE_BLOCK`
-- Mode: **addressed**
-- Flags: `0x62` (high data rate `0x02` + addressed `0x20` + option `0x40`)
-- Frame format:
-```
-62 21 <UID[8] LSB-first> <block_num> <data[4]>
-```
-Example for UID `E0 07 81 2B 4F 10 4B 15`, block 0, data `11 11 11 11`:
-```
-62 21 15 4B 10 4F 2B 81 07 E0 00 11 11 11 11
+Add `ANDROID_HOME` and both `Path` entries to your Windows user environment variables to keep them after restarting the terminal. Alternatively, create an untracked `local.properties` file in the project root:
+
+```properties
+sdk.dir=C:\\Users\\YOUR_NAME\\AppData\\Local\\Android\\Sdk
 ```
 
-> **Note:** With Option flag (`0x62`), NXP cards use a 2-phase response. The Flipper will log timeouts after each block write — this is **normal** and does not indicate a failure.
+## Build in VS Code
 
-**Step 3 — Write target UID**
-```
-02 E0 09 40 <target_uid_high>
-02 E0 09 41 <target_uid_low>
-```
+1. Open this repository folder in VS Code.
+2. Open **Terminal → Run Build Task** and choose **Android: build debug APK**.
 
----
+The APK is created at:
 
-### ⚠️ Important
-
-The Gen2 layout command (`0x47`) is **intentionally NOT sent**.
-- Not required for most readers
-- **Will brick SLIX-L magic cards**
-
----
-
-## 🔨 Build from source
-
-```bash
-# Install ufbt
-pip3 install ufbt
-
-# Pull Unleashed SDK
-ufbt update --index-url=https://up.unleashedflip.com/directory.json
-
-# Build
-cd sli_writer
-ufbt build
-
-# Copy .fap to your Flipper SD card
-cp /home/$USER/.ufbt/build/sli_writer.fap /path/to/SD/apps/NFC/
+```text
+app\build\outputs\apk\debug\app-debug.apk
 ```
 
----
+Equivalent terminal commands:
 
-## 🛠️ Debugging
+```powershell
+.\gradlew.bat :app:assembleDebug
+```
 
-If writing fails:
-1. Connect your Flipper via USB
-2. Open a serial console (Putty, screen, etc.)
-3. Set baud rate to `230400`
+## Install and run on a phone
 
-### Enable debug logs:
-```
-> log debug
-```
-Then look for `[SLI_Writer]` lines.
+Enable Developer options and USB debugging on the phone, connect it by USB, and accept the debugging prompt. Confirm the connection with:
 
-### Key debug messages
+```powershell
+adb devices
 ```
-iso_send_raw: err=0 rxbytes=2 resp=[XX YY]
-```
-Command received — card returned an error. `YY` = ISO15693 error code.
 
-```
-iso_send_raw: err=6 rxbytes=0
-```
-No response — likely timeout or CRC issue.
+In VS Code, run **Terminal → Run Task → Android: launch app**. That task builds, installs, and opens the app. You can also run it manually:
 
+```powershell
+.\gradlew.bat :app:installDebug
+adb shell am start -n dev.fabuloso.slider/.MainActivity
 ```
-block N: err=6 rxbytes=0
+
+## NFC workflow
+
+Open SLIder and hold a compatible NfcV tag against the phone. The tag is read automatically and added to the list; the save picker is not opened automatically. Tap the save icon on a row when you want to export that tag as a Flipper `.nfc` file. Use the delete icon to remove one tag, or **Delete all** to clear the list. Both delete actions ask for confirmation.
+
+Scanned tags remain in the list across app restarts until deleted. Scanning a UID that is already listed leaves the existing entry unchanged and displays a short message.
+
+You can also hold a compatible tag to the phone while the app is closed; Android will open SLIder and read it immediately.
+
+Keep the phone still against the tag until the read finishes.
+
+NFC reads are processed in order on a background worker. Loading, persistence, deletion, and file export also run away from the UI thread so the screen remains responsive.
+
+## Architecture and tests
+
+The activity owns Android UI and NFC callbacks, while `MainViewModel` retains screen state and queued work across configuration changes. NFC protocol handling, SharedPreferences persistence, and file export are exposed through testable interfaces and use coroutines for blocking work.
+
+Run the local unit and Robolectric tests with:
+
+```powershell
+.\gradlew.bat :app:testDebugUnitTest
 ```
-Normal behavior with Option flag (`0x62`) — not an error.
 
+## Project layout
+
+```text
+app/src/main/AndroidManifest.xml
+app/src/main/java/dev/fabuloso/slider/     Kotlin sources
+app/src/main/res/                          UI and Android resources
+.vscode/tasks.json                         build, install, and launch tasks
 ```
-Write block N failed
-```
-Block write failed after all retries.
-
----
-
-## Related
-
-- [Unleashed Firmware](https://github.com/DarkFlippers/unleashed-firmware)
-- [iso15693_nfc_writer (Unleashed non-catalog)](https://github.com/xMasterX/all-the-plugins/tree/dev/non_catalog_apps/iso15693_nfc_writer)
-- [Proxmark3 hf 15 commands](https://github.com/RfidResearchGroup/proxmark3)
-- [Toniebox community forum](https://forum.revvox.de)

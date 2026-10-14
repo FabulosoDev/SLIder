@@ -1,0 +1,15 @@
+*.iml
+.gradle/
+.idea/
+.kotlin/
+.vscode/*.log
+/build/
+/local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+.bootstrap-gradle*/
+.bootstrap-gradle*.zip
+.bootstrap-wrapper/
