@@ -18,6 +18,7 @@ import dev.fabuloso.slider.databinding.ActivityMainBinding
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.Executors
 
 class MainActivity : ComponentActivity() {
 
@@ -25,6 +26,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var tagStore: StoredTagStore
     private lateinit var tagAdapter: TagListAdapter
     private val records = mutableListOf<StoredTagRecord>()
+    private val tagExecutor = Executors.newSingleThreadExecutor()
     private var nfcAdapter: NfcAdapter? = null
     private var pendingSaveUid: String? = null
 
@@ -115,6 +117,11 @@ class MainActivity : ComponentActivity() {
         disableReaderMode()
     }
 
+    override fun onDestroy() {
+        tagExecutor.shutdownNow()
+        super.onDestroy()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -135,42 +142,55 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        readTag(tag)
+        enqueueTagRead(tag)
     }
 
-    private fun readTag(tag: Tag) {
+    private fun enqueueTagRead(tag: Tag) {
+        if (!tagExecutor.isShutdown) {
+            tagExecutor.execute { readAndStoreTag(tag) }
+        }
+    }
+
+    private fun readAndStoreTag(tag: Tag) {
         val currentUidMsb = tag.id.reversedArray()
         Log.i(TAG, "Reading UID ${currentUidMsb.toHexCompact()}")
 
-        try {
-            val data = Iso15693Transport(tag, lowDataRate = true).use { transport ->
+        val data = try {
+            Iso15693Transport(tag, lowDataRate = true).use { transport ->
                 transport.connect()
                 FlipperNfcReader.read(transport, currentUidMsb) { Log.d(TAG, it) }
             }
-            runOnUiThread { onReadCompleted(data) }
         } catch (t: Throwable) {
             Log.e(TAG, "Tag read failed", t)
             runOnUiThread { toast(R.string.toast_read_failed) }
+            return
+        }
+
+        val record = StoredTagRecord.from(data)
+        val added = try {
+            tagStore.add(record)
+        } catch (t: Throwable) {
+            Log.e(TAG, "Could not persist tag ${record.uidHex}", t)
+            runOnUiThread { toast(R.string.toast_storage_failed) }
+            return
+        }
+
+        runOnUiThread {
+            if (!added) {
+                Log.i(TAG, "Ignoring duplicate tag ${record.uidHex}")
+                toast(R.string.toast_tag_duplicate)
+                return@runOnUiThread
+            }
+            onReadCompleted(record)
         }
     }
 
-    private fun onReadCompleted(data: FlipperNfcData) {
-        val record = StoredTagRecord.from(data)
-        try {
-            if (!tagStore.add(record)) {
-                Log.i(TAG, "Ignoring duplicate tag ${record.uidHex}")
-                toast(R.string.toast_tag_duplicate)
-                return
-            }
-            records += record
-            tagAdapter.notifyDataSetChanged()
-            updateDeleteAllState()
-            Log.i(TAG, "Added tag ${record.uidHex}")
-            toast(R.string.toast_tag_added)
-        } catch (t: Throwable) {
-            Log.e(TAG, "Could not persist tag ${record.uidHex}", t)
-            toast(R.string.toast_storage_failed)
-        }
+    private fun onReadCompleted(record: StoredTagRecord) {
+        records += record
+        tagAdapter.notifyDataSetChanged()
+        updateDeleteAllState()
+        Log.i(TAG, "Added tag ${record.uidHex}")
+        toast(R.string.toast_tag_added)
     }
 
     private fun saveTag(record: StoredTagRecord) {
@@ -255,7 +275,7 @@ class MainActivity : ComponentActivity() {
     private fun enableReaderMode() {
         nfcAdapter?.enableReaderMode(
             this,
-            { tag -> readTag(tag) },
+            { tag -> enqueueTagRead(tag) },
             NfcAdapter.FLAG_READER_NFC_V or NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK,
             null,
         )
