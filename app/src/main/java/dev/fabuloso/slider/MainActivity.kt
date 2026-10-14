@@ -12,58 +12,27 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.DividerItemDecoration
+import androidx.recyclerview.widget.LinearLayoutManager
 import dev.fabuloso.slider.databinding.ActivityMainBinding
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.concurrent.Executors
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-
     private lateinit var binding: ActivityMainBinding
-    private lateinit var tagStore: StoredTagStore
     private lateinit var tagAdapter: TagListAdapter
-    private val records = mutableListOf<StoredTagRecord>()
-    private val tagExecutor = Executors.newSingleThreadExecutor()
+    private val viewModel: MainViewModel by viewModels()
     private var nfcAdapter: NfcAdapter? = null
-    private var pendingSaveUid: String? = null
 
     private val createReadFile = registerForActivityResult(
-        ActivityResultContracts.CreateDocument("application/octet-stream")
+        ActivityResultContracts.CreateDocument("application/octet-stream"),
     ) { uri: Uri? ->
-        val uid = pendingSaveUid
-        pendingSaveUid = null
-
-        if (uri == null) {
-            toast(R.string.toast_save_canceled)
-            return@registerForActivityResult
-        }
-
-        val record = records.firstOrNull { it.uidHex == uid }
-        if (record == null) {
-            Log.w(TAG, "Save destination returned without a matching tag record")
-            toast(R.string.toast_save_missing)
-            return@registerForActivityResult
-        }
-
-        try {
-            val text = FlipperNfcSerializer.serialize(
-                uid = record.uid,
-                data = record.data,
-                blockCount = record.blockCount,
-                blockSize = record.blockSize,
-            )
-            contentResolver.openOutputStream(uri)?.use {
-                it.write(text.toByteArray(Charsets.UTF_8))
-            } ?: error("Unable to open destination")
-            Log.i(TAG, "Saved tag ${record.uidHex} to $uri")
-            toast(R.string.toast_save_success)
-        } catch (t: Throwable) {
-            Log.e(TAG, "Could not save tag ${record.uidHex}", t)
-            toast(R.string.toast_save_failed)
-        }
+        viewModel.onExportDestinationSelected(uri)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -71,25 +40,10 @@ class MainActivity : ComponentActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         applySystemBarInsets()
+        configureTagList()
 
-        tagStore = StoredTagStore(this)
-        try {
-            records += tagStore.load()
-        } catch (t: Throwable) {
-            Log.e(TAG, "Could not load the stored tag list", t)
-            toast(R.string.toast_storage_failed)
-        }
-        pendingSaveUid = savedInstanceState?.getString(STATE_PENDING_SAVE_UID)
-
-        tagAdapter = TagListAdapter(
-            context = this,
-            records = records,
-            onSave = ::saveTag,
-            onDelete = ::confirmDeleteTag,
-        )
-        binding.listTags.adapter = tagAdapter
         binding.btnDeleteAll.setOnClickListener { confirmDeleteAll() }
-        updateDeleteAllState()
+        observeViewModel()
 
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
         if (nfcAdapter == null) {
@@ -99,12 +53,7 @@ class MainActivity : ComponentActivity() {
             Log.i(TAG, "Automatic NFC reading is active")
         }
 
-        handleIntent(intent)
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        outState.putString(STATE_PENDING_SAVE_UID, pendingSaveUid)
+        if (savedInstanceState == null) handleIntent(intent)
     }
 
     override fun onResume() {
@@ -113,19 +62,63 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
-        super.onPause()
         disableReaderMode()
-    }
-
-    override fun onDestroy() {
-        tagExecutor.shutdownNow()
-        super.onDestroy()
+        super.onPause()
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         handleIntent(intent)
+    }
+
+    private fun configureTagList() {
+        tagAdapter = TagListAdapter(
+            onSave = { viewModel.requestExport(it.uidHex) },
+            onDelete = { record ->
+                if (viewModel.uiState.value.canDelete(record.uidHex)) {
+                    confirmDeleteTag(record)
+                }
+            },
+        )
+        binding.listTags.apply {
+            layoutManager = LinearLayoutManager(this@MainActivity)
+            adapter = tagAdapter
+            addItemDecoration(
+                DividerItemDecoration(this@MainActivity, DividerItemDecoration.VERTICAL),
+            )
+        }
+    }
+
+    private fun observeViewModel() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch { viewModel.uiState.collect(::render) }
+                launch { viewModel.effects.collect(::handleEffect) }
+            }
+        }
+    }
+
+    private fun render(state: MainUiState) {
+        tagAdapter.submitList(
+            state.tags.map { record ->
+                TagRowItem(
+                    record = record,
+                    saveEnabled = state.canSave(record.uidHex),
+                    deleteEnabled = state.deleteButtonEnabled(record.uidHex),
+                )
+            },
+        )
+
+        binding.btnDeleteAll.isEnabled = state.deleteAllButtonEnabled
+        binding.btnDeleteAll.alpha = if (state.deleteAllButtonEnabled) 1f else DISABLED_ALPHA
+    }
+
+    private fun handleEffect(effect: MainUiEffect) {
+        when (effect) {
+            is MainUiEffect.LaunchSaveDocument -> createReadFile.launch(effect.suggestedName)
+            is MainUiEffect.ShowMessage -> toast(effect.messageResource)
+        }
     }
 
     private fun handleIntent(intent: Intent?) {
@@ -136,119 +129,35 @@ class MainActivity : ComponentActivity() {
             intent?.getParcelableExtra<Tag>(NfcAdapter.EXTRA_TAG)
         } ?: return
 
+        handleTag(tag)
+    }
+
+    private fun handleTag(tag: Tag) {
         if (!tag.techList.orEmpty().contains(NfcV::class.java.name)) {
             Log.w(TAG, "Detected tag is not ISO15693 / NfcV")
-            toast(R.string.toast_tag_unsupported)
+            viewModel.reportUnsupportedTag()
             return
         }
-
-        enqueueTagRead(tag)
+        viewModel.enqueueTag(AndroidNfcTagHandle(tag))
     }
 
-    private fun enqueueTagRead(tag: Tag) {
-        if (!tagExecutor.isShutdown) {
-            tagExecutor.execute { readAndStoreTag(tag) }
-        }
-    }
-
-    private fun readAndStoreTag(tag: Tag) {
-        val currentUidMsb = tag.id.reversedArray()
-        Log.i(TAG, "Reading UID ${currentUidMsb.toHexCompact()}")
-
-        val data = try {
-            Iso15693Transport(tag, lowDataRate = true).use { transport ->
-                transport.connect()
-                FlipperNfcReader.read(transport, currentUidMsb) { Log.d(TAG, it) }
-            }
-        } catch (t: Throwable) {
-            Log.e(TAG, "Tag read failed", t)
-            runOnUiThread { toast(R.string.toast_read_failed) }
-            return
-        }
-
-        val record = StoredTagRecord.from(data)
-        val added = try {
-            tagStore.add(record)
-        } catch (t: Throwable) {
-            Log.e(TAG, "Could not persist tag ${record.uidHex}", t)
-            runOnUiThread { toast(R.string.toast_storage_failed) }
-            return
-        }
-
-        runOnUiThread {
-            if (!added) {
-                Log.i(TAG, "Ignoring duplicate tag ${record.uidHex}")
-                toast(R.string.toast_tag_duplicate)
-                return@runOnUiThread
-            }
-            onReadCompleted(record)
-        }
-    }
-
-    private fun onReadCompleted(record: StoredTagRecord) {
-        records += record
-        tagAdapter.notifyDataSetChanged()
-        updateDeleteAllState()
-        Log.i(TAG, "Added tag ${record.uidHex}")
-        toast(R.string.toast_tag_added)
-    }
-
-    private fun saveTag(record: StoredTagRecord) {
-        pendingSaveUid = record.uidHex
-        val uidPrefix = record.uid.toReversedHexCompact(byteCount = 4)
-        val defaultName = "${timestamp(record.readAt)}_${uidPrefix}.nfc"
-        createReadFile.launch(defaultName)
-    }
-
-    private fun confirmDeleteTag(record: StoredTagRecord) {
+    private fun confirmDeleteTag(record: TagRecord) {
         AlertDialog.Builder(this)
             .setTitle(R.string.delete_tag_title)
             .setMessage(getString(R.string.delete_tag_message, record.uidHex))
             .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.delete) { _, _ -> deleteTag(record) }
+            .setPositiveButton(R.string.delete) { _, _ -> viewModel.deleteTag(record.uidHex) }
             .show()
     }
 
-    private fun deleteTag(record: StoredTagRecord) {
-        try {
-            if (tagStore.remove(record.uidHex)) {
-                records.removeAll { it.uidHex == record.uidHex }
-                tagAdapter.notifyDataSetChanged()
-                updateDeleteAllState()
-                toast(R.string.toast_tag_deleted)
-            }
-        } catch (t: Throwable) {
-            Log.e(TAG, "Could not delete tag ${record.uidHex}", t)
-            toast(R.string.toast_storage_failed)
-        }
-    }
-
     private fun confirmDeleteAll() {
-        if (records.isEmpty()) return
+        if (!viewModel.uiState.value.canDeleteAll) return
         AlertDialog.Builder(this)
             .setTitle(R.string.delete_all_title)
             .setMessage(R.string.delete_all_message)
             .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.delete) { _, _ -> deleteAllTags() }
+            .setPositiveButton(R.string.delete) { _, _ -> viewModel.deleteAllTags() }
             .show()
-    }
-
-    private fun deleteAllTags() {
-        try {
-            tagStore.clear()
-            records.clear()
-            tagAdapter.notifyDataSetChanged()
-            updateDeleteAllState()
-            toast(R.string.toast_all_deleted)
-        } catch (t: Throwable) {
-            Log.e(TAG, "Could not delete all tags", t)
-            toast(R.string.toast_storage_failed)
-        }
-    }
-
-    private fun updateDeleteAllState() {
-        binding.btnDeleteAll.isEnabled = records.isNotEmpty()
-        binding.btnDeleteAll.alpha = if (records.isEmpty()) 0.45f else 1f
     }
 
     private fun applySystemBarInsets() {
@@ -259,7 +168,7 @@ class MainActivity : ComponentActivity() {
         val initialBottom = view.paddingBottom
         ViewCompat.setOnApplyWindowInsetsListener(view) { content, windowInsets ->
             val insets = windowInsets.getInsets(
-                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
             )
             content.setPadding(
                 initialLeft + insets.left,
@@ -275,7 +184,7 @@ class MainActivity : ComponentActivity() {
     private fun enableReaderMode() {
         nfcAdapter?.enableReaderMode(
             this,
-            { tag -> enqueueTagRead(tag) },
+            ::handleTag,
             NfcAdapter.FLAG_READER_NFC_V or NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK,
             null,
         )
@@ -285,15 +194,12 @@ class MainActivity : ComponentActivity() {
         nfcAdapter?.disableReaderMode(this)
     }
 
-    private fun timestamp(date: Date): String =
-        SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(date)
-
     private fun toast(message: Int) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
     companion object {
         private const val TAG = "SLIder"
-        private const val STATE_PENDING_SAVE_UID = "pendingSaveUid"
+        private const val DISABLED_ALPHA = 0.45f
     }
 }

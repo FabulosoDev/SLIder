@@ -1,55 +1,53 @@
 package dev.fabuloso.slider
 
-import android.content.Context
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
-import android.widget.BaseAdapter
-import android.widget.ImageButton
-import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
+import androidx.recyclerview.widget.RecyclerView
+import dev.fabuloso.slider.databinding.ItemTagBinding
+
+data class TagRowItem(
+    val record: TagRecord,
+    val saveEnabled: Boolean,
+    val deleteEnabled: Boolean,
+)
 
 class TagListAdapter(
-    context: Context,
-    private val records: List<StoredTagRecord>,
-    private val onSave: (StoredTagRecord) -> Unit,
-    private val onDelete: (StoredTagRecord) -> Unit,
-) : BaseAdapter() {
-    private val inflater = LayoutInflater.from(context)
-
-    override fun getCount(): Int = records.size
-
-    override fun getItem(position: Int): StoredTagRecord = records[position]
-
-    override fun getItemId(position: Int): Long = records[position].uidHex.hashCode().toLong()
-
-    override fun hasStableIds(): Boolean = true
-
-    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-        val view: View
-        val holder: ViewHolder
-        if (convertView == null) {
-            view = inflater.inflate(R.layout.item_tag, parent, false)
-            holder = ViewHolder(
-                uid = view.findViewById(R.id.txtUid),
-                save = view.findViewById(R.id.btnSave),
-                delete = view.findViewById(R.id.btnDelete),
-            )
-            view.tag = holder
-        } else {
-            view = convertView
-            holder = view.tag as ViewHolder
-        }
-
-        val record = getItem(position)
-        holder.uid.text = record.uid.toHexColonSeparated()
-        holder.save.setOnClickListener { onSave(record) }
-        holder.delete.setOnClickListener { onDelete(record) }
-        return view
+    private val onSave: (TagRecord) -> Unit,
+    private val onDelete: (TagRecord) -> Unit,
+) : ListAdapter<TagRowItem, TagListAdapter.ViewHolder>(DiffCallback) {
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        val binding = ItemTagBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        return ViewHolder(binding)
     }
 
-    private data class ViewHolder(
-        val uid: TextView,
-        val save: ImageButton,
-        val delete: ImageButton,
-    )
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        holder.bind(getItem(position))
+    }
+
+    inner class ViewHolder(private val binding: ItemTagBinding) :
+        RecyclerView.ViewHolder(binding.root) {
+        fun bind(item: TagRowItem) {
+            binding.txtUid.text = item.record.uid.toHexColonSeparated()
+            binding.btnSave.isEnabled = item.saveEnabled
+            binding.btnSave.alpha = if (item.saveEnabled) 1f else DISABLED_ALPHA
+            binding.btnDelete.isEnabled = item.deleteEnabled
+            binding.btnDelete.alpha = if (item.deleteEnabled) 1f else DISABLED_ALPHA
+            binding.btnSave.setOnClickListener { onSave(item.record) }
+            binding.btnDelete.setOnClickListener { onDelete(item.record) }
+        }
+    }
+
+    private object DiffCallback : DiffUtil.ItemCallback<TagRowItem>() {
+        override fun areItemsTheSame(oldItem: TagRowItem, newItem: TagRowItem): Boolean =
+            oldItem.record.uidHex == newItem.record.uidHex
+
+        override fun areContentsTheSame(oldItem: TagRowItem, newItem: TagRowItem): Boolean =
+            oldItem == newItem
+    }
+
+    companion object {
+        private const val DISABLED_ALPHA = 0.45f
+    }
 }

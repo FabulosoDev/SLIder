@@ -80,6 +80,18 @@ You can also hold a compatible tag to the phone while the app is closed; Android
 
 Keep the phone still against the tag until the read finishes.
 
+NFC reads are processed in order on a background worker. Loading, persistence, deletion, and file export also run away from the UI thread so the screen remains responsive.
+
+## Architecture and tests
+
+The activity owns Android UI and NFC callbacks, while `MainViewModel` retains screen state and queued work across configuration changes. NFC protocol handling, SharedPreferences persistence, and file export are exposed through testable interfaces and use coroutines for blocking work.
+
+Run the local unit and Robolectric tests with:
+
+```powershell
+.\gradlew.bat :app:testDebugUnitTest
+```
+
 ## Project layout
 
 ```text
