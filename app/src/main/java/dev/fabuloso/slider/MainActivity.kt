@@ -107,12 +107,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        enableForegroundDispatch()
+        enableReaderMode()
     }
 
     override fun onPause() {
         super.onPause()
-        disableForegroundDispatch()
+        disableReaderMode()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -147,10 +147,10 @@ class MainActivity : ComponentActivity() {
                 transport.connect()
                 FlipperNfcReader.read(transport, currentUidMsb) { Log.d(TAG, it) }
             }
-            onReadCompleted(data)
+            runOnUiThread { onReadCompleted(data) }
         } catch (t: Throwable) {
             Log.e(TAG, "Tag read failed", t)
-            toast(R.string.toast_read_failed)
+            runOnUiThread { toast(R.string.toast_read_failed) }
         }
     }
 
@@ -252,22 +252,17 @@ class MainActivity : ComponentActivity() {
         ViewCompat.requestApplyInsets(view)
     }
 
-    private fun enableForegroundDispatch() {
-        val adapter = nfcAdapter ?: return
-        val intent = Intent(this, javaClass).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        val pendingIntent = android.app.PendingIntent.getActivity(
+    private fun enableReaderMode() {
+        nfcAdapter?.enableReaderMode(
             this,
-            0,
-            intent,
-            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_MUTABLE,
+            { tag -> readTag(tag) },
+            NfcAdapter.FLAG_READER_NFC_V or NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK,
+            null,
         )
-        val filters = arrayOf(android.content.IntentFilter(NfcAdapter.ACTION_TECH_DISCOVERED))
-        val techLists = arrayOf(arrayOf(NfcV::class.java.name))
-        adapter.enableForegroundDispatch(this, pendingIntent, filters, techLists)
     }
 
-    private fun disableForegroundDispatch() {
-        nfcAdapter?.disableForegroundDispatch(this)
+    private fun disableReaderMode() {
+        nfcAdapter?.disableReaderMode(this)
     }
 
     private fun timestamp(date: Date): String =
