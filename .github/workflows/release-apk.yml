@@ -52,7 +52,36 @@ jobs:
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
           echo "VERSION_CODE=$version_code" >> "$GITHUB_ENV"
 
-      - name: Test and build release APK
+      - name: Decode release keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          missing=0
+          for name in \
+            ANDROID_KEYSTORE_BASE64 \
+            ANDROID_KEYSTORE_PASSWORD \
+            ANDROID_KEY_ALIAS \
+            ANDROID_KEY_PASSWORD; do
+            if [[ -z "${!name}" ]]; then
+              echo "Missing required GitHub Actions secret: $name" >&2
+              missing=1
+            fi
+          done
+          (( missing == 0 )) || exit 1
+
+          umask 077
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" \
+            | base64 --decode > "$RUNNER_TEMP/slider-release.jks"
+
+      - name: Test and build signed release APK
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/slider-release.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: >-
           ./gradlew
           :app:testDebugUnitTest
@@ -64,14 +93,37 @@ jobs:
       - name: Name release APK
         run: |
           mkdir -p artifacts
-          cp app/build/outputs/apk/release/app-release-unsigned.apk \
-            "artifacts/SLIder-${VERSION_NAME}-unsigned.apk"
+          cp app/build/outputs/apk/release/app-release.apk \
+            "artifacts/SLIder-${VERSION_NAME}.apk"
+
+      - name: Verify APK signature
+        run: >-
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          verify
+          --verbose
+          --print-certs
+          "artifacts/SLIder-${VERSION_NAME}.apk"
 
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          apk="artifacts/SLIder-${VERSION_NAME}-unsigned.apk"
+          apk="artifacts/SLIder-${VERSION_NAME}.apk"
+
+          if gh release view "$VERSION_NAME" >/dev/null 2>&1; then
+            gh release upload "$VERSION_NAME" "$apk" --clobber
+          else
+            gh release create "$VERSION_NAME" "$apk" \
+              --title "SLIder $VERSION_NAME" \
+              --generate-notes \
+              --verify-tag
+          fi
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          apk="artifacts/SLIder-${VERSION_NAME}.apk"
 
           if gh release view "$VERSION_NAME" >/dev/null 2>&1; then
             gh release upload "$VERSION_NAME" "$apk" --clobber
@@ -85,7 +137,11 @@ jobs:
       - name: Upload release APK
         uses: actions/upload-artifact@v7
         with:
-          name: SLIder-${{ github.ref_name }}-release-unsigned
+          name: SLIder-${{ github.ref_name }}
           path: artifacts/*.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Remove release keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/slider-release.jks"
