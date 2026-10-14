@@ -2,7 +2,7 @@
 
 > **Credits:** This project is based on the original [SLI-Writer](https://github.com/Julienbxl/SLI-Writer) code by **Julienbxl**.
 
-SLIder reads compatible ISO15693 / NfcV tags and saves their contents as Flipper `.nfc` dumps. It does not modify NFC tags. The project is a standard Kotlin Android app and can be edited and built entirely from VS Code.
+SLIder reads compatible ISO15693 / NfcV tags, keeps them in a persistent list, and saves their contents as Flipper `.nfc` dumps on request. It does not modify NFC tags. The project is a standard Kotlin Android app and can be edited and built entirely from VS Code.
 
 ## What you need
 
@@ -72,7 +72,11 @@ adb shell am start -n dev.fabuloso.slider/.MainActivity
 
 ## NFC workflow
 
-Open SLIder and hold a compatible NfcV tag against the phone. The tag is read automatically; no button press is required. After reading, choose where to save the resulting Flipper `.nfc` file. You can also hold a compatible tag to the phone while the app is closed; Android will open SLIder and read it immediately.
+Open SLIder and hold a compatible NfcV tag against the phone. The tag is read automatically and added to the list; the save picker is not opened automatically. Tap the save icon on a row when you want to export that tag as a Flipper `.nfc` file. Use the delete icon to remove one tag, or **Delete all** to clear the list. Both delete actions ask for confirmation.
+
+Scanned tags remain in the list across app restarts until deleted. Scanning a UID that is already listed leaves the existing entry unchanged and displays a short message.
+
+You can also hold a compatible tag to the phone while the app is closed; Android will open SLIder and read it immediately.
 
 Keep the phone still against the tag until the read finishes.
 

@@ -1,8 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SLIder</string>
-    <string name="app_subtitle">ISO15693 / SLIX tag reader</string>
-    <string name="status_ready">Status: Ready — hold a tag nearby</string>
-    <string name="activity_log">Activity log</string>
-    <string name="nfc_hint">Hold an ISO15693 tag against the phone. It will be read automatically.</string>
+    <string name="delete_all">Delete all</string>
+    <string name="column_uid">UID</string>
+    <string name="column_data">Data</string>
+    <string name="column_actions">Actions</string>
+    <string name="save_tag">Save tag</string>
+    <string name="delete_tag">Delete tag</string>
+    <string name="delete_tag_title">Delete tag?</string>
+    <string name="delete_tag_message">Delete tag %1$s from the list?</string>
+    <string name="delete_all_title">Delete all tags?</string>
+    <string name="delete_all_message">This will permanently remove every scanned tag from the list.</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="toast_nfc_unavailable">NFC is not available on this device.</string>
+    <string name="toast_tag_unsupported">This tag is not ISO15693 compatible.</string>
+    <string name="toast_read_failed">Could not read the tag.</string>
+    <string name="toast_tag_added">Tag added.</string>
+    <string name="toast_tag_duplicate">This tag has already been read.</string>
+    <string name="toast_storage_failed">Could not update the saved tag list.</string>
+    <string name="toast_save_canceled">Save canceled.</string>
+    <string name="toast_save_failed">Could not save the tag.</string>
+    <string name="toast_save_missing">The selected tag is no longer available.</string>
+    <string name="toast_save_success">Tag saved.</string>
+    <string name="toast_tag_deleted">Tag deleted.</string>
+    <string name="toast_all_deleted">All tags deleted.</string>
 </resources>
