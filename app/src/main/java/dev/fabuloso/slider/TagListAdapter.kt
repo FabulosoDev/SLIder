@@ -16,16 +16,13 @@ import dev.fabuloso.slider.databinding.ItemTagBinding
 
 data class TagRowItem(
     val record: TagRecord,
-    val saveEnabled: Boolean,
     val shareEnabled: Boolean,
     val deleteEnabled: Boolean,
     val highlightStartedAtUptimeMillis: Long = 0L,
 )
 
 class TagListAdapter(
-    private val onSave: (TagRecord) -> Unit,
-    private val onShare: (TagRecord) -> Unit,
-    private val onDelete: (TagRecord) -> Unit,
+    private val onClick: (TagRecord) -> Unit,
 ) : ListAdapter<TagRowItem, TagListAdapter.ViewHolder>(DiffCallback) {
     private var lastPlayedHighlight: Pair<String, Long>? = null
 
@@ -62,15 +59,7 @@ class TagListAdapter(
             }
 
             binding.txtUid.text = item.record.uid.toHexColonSeparated()
-            binding.btnSave.isEnabled = item.saveEnabled
-            binding.btnSave.alpha = if (item.saveEnabled) 1f else DISABLED_ALPHA
-            binding.btnShare.isEnabled = item.shareEnabled
-            binding.btnShare.alpha = if (item.shareEnabled) 1f else DISABLED_ALPHA
-            binding.btnDelete.isEnabled = item.deleteEnabled
-            binding.btnDelete.alpha = if (item.deleteEnabled) 1f else DISABLED_ALPHA
-            binding.btnSave.setOnClickListener { onSave(item.record) }
-            binding.btnShare.setOnClickListener { onShare(item.record) }
-            binding.btnDelete.setOnClickListener { onDelete(item.record) }
+            binding.root.setOnClickListener { onClick(item.record) }
 
             if (highlight != null && highlight != lastPlayedHighlight) {
                 lastPlayedHighlight = highlight
@@ -127,7 +116,6 @@ class TagListAdapter(
     }
 
     companion object {
-        private const val DISABLED_ALPHA = 0.45f
         private const val FADE_IN_MS = 250L
         private const val FADE_OUT_MS = 350L
         private const val HIGHLIGHT_DURATION_MS = 3_000L

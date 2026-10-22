@@ -3,7 +3,7 @@
     <string name="app_name">SLIder</string>
     <string name="delete_all">Delete all</string>
     <string name="column_uid">UID</string>
-    <string name="column_actions">Actions</string>
+    <string name="swipe_share">Share</string>
     <string name="save_tag">Save tag</string>
     <string name="share_tag">Share tag</string>
     <string name="share_tag_chooser">Share NFC file with</string>
