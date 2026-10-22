@@ -3,6 +3,6 @@
     <color name="screen_background">#121212</color>
     <color name="primary_text">#E8EAED</color>
     <color name="list_divider">#3C4043</color>
-    <color name="new_tag_highlight">#284B72</color>
+    <color name="new_tag_highlight">#700D6EFD</color>
     <color name="dialog_accent">#8AB4F8</color>
 </resources>

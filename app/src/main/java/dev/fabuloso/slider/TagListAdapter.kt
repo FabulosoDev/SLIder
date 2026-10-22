@@ -89,7 +89,7 @@ class TagListAdapter(
                             binding.root.setBackgroundColor(
                                 ColorUtils.setAlphaComponent(
                                     highlightColor,
-                                    (255f * opacity).toInt(),
+                                    (Color.alpha(highlightColor) * opacity).toInt(),
                                 ),
                             )
                         }
