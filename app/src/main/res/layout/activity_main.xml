@@ -15,7 +15,7 @@
         android:layout_height="48dp"
         android:layout_gravity="end"
         android:background="@drawable/bg_action_button"
-        android:backgroundTint="@color/action_red"
+        android:backgroundTint="@color/action_danger"
         android:elevation="2dp"
         android:enabled="false"
         android:minWidth="0dp"
