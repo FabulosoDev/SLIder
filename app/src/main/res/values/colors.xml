@@ -6,6 +6,7 @@
     <color name="list_divider">#DADCE0</color>
     <color name="new_tag_highlight">#440D6EFD</color>
     <color name="action_primary">#0D6EFD</color>
+    <color name="action_share">#198754</color>
     <color name="action_danger">#D93025</color>
     <color name="dialog_accent">#0D6EFD</color>
 </resources>

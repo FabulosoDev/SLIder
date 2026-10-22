@@ -1,6 +1,7 @@
 package dev.fabuloso.slider
 
 import android.app.AlertDialog
+import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import android.nfc.NfcAdapter
@@ -14,6 +15,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
@@ -22,6 +24,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import dev.fabuloso.slider.databinding.ActivityMainBinding
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -77,6 +80,7 @@ class MainActivity : ComponentActivity() {
     private fun configureTagList() {
         tagAdapter = TagListAdapter(
             onSave = { viewModel.requestExport(it.uidHex) },
+            onShare = ::shareTag,
             onDelete = { record ->
                 if (viewModel.uiState.value.canDelete(record.uidHex)) {
                     confirmDeleteTag(record)
@@ -106,6 +110,7 @@ class MainActivity : ComponentActivity() {
             TagRowItem(
                 record = record,
                 saveEnabled = state.canSave(record.uidHex),
+                shareEnabled = state.canSave(record.uidHex),
                 deleteEnabled = state.deleteButtonEnabled(record.uidHex),
                 highlightStartedAtUptimeMillis = state.recentTagHighlight
                     ?.takeIf { it.uidHex == record.uidHex }
@@ -160,6 +165,37 @@ class MainActivity : ComponentActivity() {
             return
         }
         viewModel.enqueueTag(AndroidNfcTagHandle(tag))
+    }
+
+    private fun shareTag(record: TagRecord) {
+        lifecycleScope.launch {
+            try {
+                val file = TagShareFileCreator(cacheDir).create(record)
+                val uri = FileProvider.getUriForFile(
+                    this@MainActivity,
+                    "$packageName.fileprovider",
+                    file,
+                )
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = NFC_FILE_MIME_TYPE
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_SUBJECT, file.name)
+                    clipData = ClipData.newUri(contentResolver, file.name, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                startActivity(
+                    Intent.createChooser(
+                        shareIntent,
+                        getString(R.string.share_tag_chooser),
+                    ),
+                )
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Throwable) {
+                Log.e(TAG, "Could not share tag ${record.uidHex}", error)
+                toast(R.string.toast_share_failed)
+            }
+        }
     }
 
     private fun confirmDeleteTag(record: TagRecord) {
@@ -222,5 +258,6 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val TAG = "SLIder"
         private const val DISABLED_ALPHA = 0.45f
+        private const val NFC_FILE_MIME_TYPE = "application/octet-stream"
     }
 }

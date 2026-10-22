@@ -5,6 +5,8 @@
     <string name="column_uid">UID</string>
     <string name="column_actions">Actions</string>
     <string name="save_tag">Save tag</string>
+    <string name="share_tag">Share tag</string>
+    <string name="share_tag_chooser">Share NFC file with</string>
     <string name="delete_tag">Delete tag</string>
     <string name="delete_tag_title">Delete tag?</string>
     <string name="delete_tag_message">Delete tag %1$s from the list?</string>
@@ -22,6 +24,7 @@
     <string name="toast_save_failed">Could not save the tag.</string>
     <string name="toast_save_missing">The selected tag is no longer available.</string>
     <string name="toast_save_success">Tag saved.</string>
+    <string name="toast_share_failed">Could not share the tag.</string>
     <string name="toast_tag_deleted">Tag deleted.</string>
     <string name="toast_all_deleted">All tags deleted.</string>
 </resources>
