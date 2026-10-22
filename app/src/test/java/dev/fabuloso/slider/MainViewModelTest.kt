@@ -6,8 +6,10 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -130,6 +132,35 @@ class MainViewModelTest {
         assertTrue(scanning.canSave(first.uidHex))
     }
 
+    @Test
+    fun `deleted tag can be restored to its original position`() = runTest(dispatcher) {
+        val first = record(1)
+        val second = record(2)
+        val third = record(3)
+        val repository = FakeRepository(listOf(first, second, third))
+        val viewModel = viewModel(repository, FakeReader())
+        advanceUntilIdle()
+
+        val deletionEffect = async { viewModel.effects.first() }
+        viewModel.deleteTag(second.uidHex)
+        advanceUntilIdle()
+
+        val deleted = deletionEffect.await() as MainUiEffect.TagDeleted
+        assertEquals(second, deleted.record)
+        assertEquals(1, deleted.originalIndex)
+        assertEquals(listOf(first, third), viewModel.uiState.value.tags)
+
+        val restoredEffect = async { viewModel.effects.first() }
+        viewModel.undoDelete(deleted.record, deleted.originalIndex)
+        advanceUntilIdle()
+
+        assertEquals(listOf(first, second, third), viewModel.uiState.value.tags)
+        assertEquals(
+            R.string.toast_tag_restored,
+            (restoredEffect.await() as MainUiEffect.ShowMessage).messageResource,
+        )
+    }
+
     private fun viewModel(
         repository: FakeRepository,
         reader: FakeReader,
@@ -182,6 +213,16 @@ class MainViewModelTest {
             if (updated.size == mutableRecords.value.size) return false
             mutableRecords.value = updated
             return true
+        }
+
+        override suspend fun restore(record: TagRecord, index: Int): AddTagResult {
+            if (mutableRecords.value.any { it.uidHex == record.uidHex }) {
+                return AddTagResult.DUPLICATE
+            }
+            mutableRecords.value = mutableRecords.value.toMutableList().apply {
+                add(index.coerceIn(0, size), record)
+            }
+            return AddTagResult.ADDED
         }
 
         override suspend fun clear() {

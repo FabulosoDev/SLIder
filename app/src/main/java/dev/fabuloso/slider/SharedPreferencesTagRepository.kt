@@ -59,6 +59,23 @@ class SharedPreferencesTagRepository(
         }
     }
 
+    override suspend fun restore(record: TagRecord, index: Int): AddTagResult =
+        withContext(ioDispatcher) {
+            mutex.withLock {
+                val current = ensureLoadedLocked()
+                if (current.any { it.uidHex == record.uidHex }) {
+                    return@withLock AddTagResult.DUPLICATE
+                }
+
+                val updated = current.toMutableList().apply {
+                    add(index.coerceIn(0, size), record)
+                }
+                persistLocked(updated)
+                mutableRecords.value = updated
+                AddTagResult.ADDED
+            }
+        }
+
     override suspend fun clear() = withContext(ioDispatcher) {
         mutex.withLock {
             ensureLoadedLocked()

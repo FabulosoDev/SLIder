@@ -76,6 +76,25 @@ class SharedPreferencesTagRepositoryTest {
         assertEquals(1, repository.records.value.size)
     }
 
+    @Test
+    fun `restore returns a deleted record to its original position`() = runTest {
+        val repository = SharedPreferencesTagRepository(context, Dispatchers.Unconfined)
+        val first = record(uidLastByte = 1)
+        val second = record(uidLastByte = 2)
+        val third = record(uidLastByte = 3)
+        repository.add(first)
+        repository.add(second)
+        repository.add(third)
+        repository.remove(second.uidHex)
+
+        assertEquals(AddTagResult.ADDED, repository.restore(second, 1))
+        assertEquals(AddTagResult.DUPLICATE, repository.restore(second, 1))
+        assertEquals(listOf(first, second, third), repository.records.value)
+
+        val reloaded = SharedPreferencesTagRepository(context, Dispatchers.Unconfined).load()
+        assertEquals(listOf(first, second, third), reloaded)
+    }
+
     private fun preferences() = context.getSharedPreferences(
         SharedPreferencesTagRepository.PREFERENCES_NAME,
         Context.MODE_PRIVATE,

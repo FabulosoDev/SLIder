@@ -8,12 +8,12 @@
     <string name="share_tag">Share tag</string>
     <string name="share_tag_chooser">Share NFC file with</string>
     <string name="delete_tag">Delete tag</string>
-    <string name="delete_tag_title">Delete tag?</string>
-    <string name="delete_tag_message">Delete tag %1$s from the list?</string>
     <string name="delete_all_title">Delete all tags?</string>
     <string name="delete_all_message">This will permanently remove every scanned tag from the list.</string>
     <string name="delete">Delete</string>
     <string name="cancel">Cancel</string>
+    <string name="undo">Undo</string>
+    <string name="dismiss_message">Dismiss message</string>
     <string name="toast_nfc_unavailable">NFC is not available on this device.</string>
     <string name="toast_tag_unsupported">This tag is not ISO15693 compatible.</string>
     <string name="toast_read_failed">Could not read the tag.</string>
@@ -26,5 +26,6 @@
     <string name="toast_save_success">Tag saved.</string>
     <string name="toast_share_failed">Could not share the tag.</string>
     <string name="toast_tag_deleted">Tag deleted.</string>
+    <string name="toast_tag_restored">Tag restored.</string>
     <string name="toast_all_deleted">All tags deleted.</string>
 </resources>
