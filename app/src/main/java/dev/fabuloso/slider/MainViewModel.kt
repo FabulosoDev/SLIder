@@ -27,7 +27,7 @@ data class MainUiState(
     val isClearing: Boolean = false,
     val pendingExportUid: String? = null,
     val isExporting: Boolean = false,
-    val recentTagHighlight: RecentTagHighlight? = null,
+    val newTagBadge: NewTagBadge? = null,
 ) {
     val scansBusy: Boolean
         get() = activeScanUid != null || queuedScanCount > 0
@@ -59,7 +59,7 @@ data class MainUiState(
 
 }
 
-data class RecentTagHighlight(val uidHex: String, val startedAtUptimeMillis: Long)
+data class NewTagBadge(val uidHex: String, val startedAtUptimeMillis: Long)
 
 sealed interface MainUiEffect {
     data class ShowMessage(val messageResource: Int) : MainUiEffect
@@ -308,7 +308,7 @@ class MainViewModel(
                     mutableUiState.update {
                         it.copy(
                             tags = repository.records.value,
-                            recentTagHighlight = RecentTagHighlight(
+                            newTagBadge = NewTagBadge(
                                 record.uidHex,
                                 SystemClock.uptimeMillis(),
                             ),

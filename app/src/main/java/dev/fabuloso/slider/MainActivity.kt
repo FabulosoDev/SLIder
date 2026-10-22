@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var tagAdapter: TagListAdapter
     private val viewModel: MainViewModel by viewModels()
     private var nfcAdapter: NfcAdapter? = null
-    private var lastScrolledHighlight: RecentTagHighlight? = null
+    private var lastScrolledNewBadge: NewTagBadge? = null
     private val hideMessageBanner = Runnable { hideMessageBanner() }
 
     private val createReadFile = registerForActivityResult(
@@ -138,23 +138,23 @@ class MainActivity : ComponentActivity() {
                 record = record,
                 shareEnabled = state.canSave(record.uidHex),
                 deleteEnabled = state.canDelete(record.uidHex),
-                highlightStartedAtUptimeMillis = state.recentTagHighlight
+                newBadgeStartedAtUptimeMillis = state.newTagBadge
                     ?.takeIf { it.uidHex == record.uidHex }
                     ?.startedAtUptimeMillis ?: 0L,
             )
         }
-        val highlight = state.recentTagHighlight
-        if (highlight != null &&
-            highlight != lastScrolledHighlight &&
-            SystemClock.uptimeMillis() - highlight.startedAtUptimeMillis <
-                TagListAdapter.HIGHLIGHT_WINDOW_MS
+        val newBadge = state.newTagBadge
+        if (newBadge != null &&
+            newBadge != lastScrolledNewBadge &&
+            SystemClock.uptimeMillis() - newBadge.startedAtUptimeMillis <
+                TagListAdapter.NEW_BADGE_WINDOW_MS
         ) {
             tagAdapter.submitList(rows) {
                 val position = tagAdapter.currentList.indexOfFirst {
-                    it.record.uidHex == highlight.uidHex
+                    it.record.uidHex == newBadge.uidHex
                 }
-                if (position >= 0 && highlight != lastScrolledHighlight) {
-                    lastScrolledHighlight = highlight
+                if (position >= 0 && newBadge != lastScrolledNewBadge) {
+                    lastScrolledNewBadge = newBadge
                     binding.listTags.scrollToPosition(position)
                 }
             }
