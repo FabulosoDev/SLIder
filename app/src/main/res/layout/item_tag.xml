@@ -16,10 +16,27 @@
 
     <TextView
         android:id="@+id/txtUid"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:ellipsize="end"
         android:maxLines="1"
         android:textColor="@color/primary_text"
         android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/txtNewBadge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:background="@drawable/bg_new_tag_badge"
+        android:paddingStart="6dp"
+        android:paddingTop="1dp"
+        android:paddingEnd="6dp"
+        android:paddingBottom="1dp"
+        android:text="@string/new_tag_badge"
+        android:textColor="@android:color/white"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:translationY="-6dp"
+        android:visibility="gone" />
 </LinearLayout>
