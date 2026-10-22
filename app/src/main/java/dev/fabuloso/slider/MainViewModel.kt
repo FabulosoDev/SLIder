@@ -2,6 +2,7 @@ package dev.fabuloso.slider
 
 import android.app.Application
 import android.net.Uri
+import android.os.SystemClock
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
@@ -26,6 +27,7 @@ data class MainUiState(
     val isClearing: Boolean = false,
     val pendingExportUid: String? = null,
     val isExporting: Boolean = false,
+    val recentTagHighlight: RecentTagHighlight? = null,
 ) {
     val scansBusy: Boolean
         get() = activeScanUid != null || queuedScanCount > 0
@@ -60,6 +62,8 @@ data class MainUiState(
             !isMutating &&
             pendingExportUid != uidHex
 }
+
+data class RecentTagHighlight(val uidHex: String, val startedAtUptimeMillis: Long)
 
 sealed interface MainUiEffect {
     data class ShowMessage(val messageResource: Int) : MainUiEffect
@@ -273,6 +277,15 @@ class MainViewModel(
             when (repository.add(record)) {
                 AddTagResult.ADDED -> {
                     Log.i(TAG, "Added tag ${record.uidHex}")
+                    mutableUiState.update {
+                        it.copy(
+                            tags = repository.records.value,
+                            recentTagHighlight = RecentTagHighlight(
+                                record.uidHex,
+                                SystemClock.uptimeMillis(),
+                            ),
+                        )
+                    }
                     showMessage(R.string.toast_tag_added)
                 }
 
