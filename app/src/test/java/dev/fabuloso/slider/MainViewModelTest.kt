@@ -126,7 +126,6 @@ class MainViewModelTest {
 
         val scanning = exporting.copy(pendingExportUid = null, activeScanUid = "active")
         assertFalse(scanning.canDelete(first.uidHex))
-        assertTrue(scanning.deleteButtonEnabled(first.uidHex))
         assertTrue(scanning.deleteAllButtonEnabled)
         assertTrue(scanning.canSave(first.uidHex))
     }

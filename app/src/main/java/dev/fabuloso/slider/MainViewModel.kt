@@ -57,10 +57,6 @@ data class MainUiState(
             !isMutating &&
             pendingExportUid != uidHex
 
-    fun deleteButtonEnabled(uidHex: String): Boolean =
-        !isLoading &&
-            !isMutating &&
-            pendingExportUid != uidHex
 }
 
 data class RecentTagHighlight(val uidHex: String, val startedAtUptimeMillis: Long)
@@ -328,4 +324,5 @@ class MainViewModel(
         private const val TAG = "SLIder"
         private const val STATE_PENDING_EXPORT_UID = "pendingExportUid"
     }
+
 }

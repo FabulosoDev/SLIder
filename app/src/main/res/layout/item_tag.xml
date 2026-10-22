@@ -3,6 +3,9 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:baselineAligned="false"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?android:attr/selectableItemBackground"
     android:gravity="center_vertical"
     android:minHeight="56dp"
     android:orientation="horizontal"
@@ -13,63 +16,10 @@
 
     <TextView
         android:id="@+id/txtUid"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
         android:ellipsize="end"
         android:maxLines="1"
-        android:paddingStart="0dp"
-        android:paddingEnd="8dp"
         android:textColor="@color/primary_text"
         android:textSize="16sp" />
-
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:orientation="horizontal">
-
-        <ImageButton
-            android:id="@+id/btnSave"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="4dp"
-            android:background="@drawable/bg_action_button"
-            android:backgroundTint="@color/action_primary"
-            android:contentDescription="@string/save_tag"
-            android:elevation="2dp"
-            android:focusable="false"
-            android:padding="8dp"
-            android:src="@drawable/ic_save"
-            android:tint="#FFFFFF" />
-
-        <ImageButton
-            android:id="@+id/btnShare"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginStart="4dp"
-            android:layout_marginEnd="4dp"
-            android:background="@drawable/bg_action_button"
-            android:backgroundTint="@color/action_share"
-            android:contentDescription="@string/share_tag"
-            android:elevation="2dp"
-            android:focusable="false"
-            android:padding="8dp"
-            android:src="@drawable/ic_share"
-            android:tint="#FFFFFF" />
-
-        <ImageButton
-            android:id="@+id/btnDelete"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginStart="4dp"
-            android:background="@drawable/bg_action_button"
-            android:backgroundTint="@color/action_danger"
-            android:contentDescription="@string/delete_tag"
-            android:elevation="2dp"
-            android:focusable="false"
-            android:padding="8dp"
-            android:src="@drawable/ic_delete"
-            android:tint="#FFFFFF" />
-    </LinearLayout>
 </LinearLayout>
