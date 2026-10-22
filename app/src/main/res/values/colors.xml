@@ -9,4 +9,12 @@
     <color name="action_share">#198754</color>
     <color name="action_danger">#D93025</color>
     <color name="dialog_accent">#0D6EFD</color>
+    <color name="message_info_background">#E8F0FE</color>
+    <color name="message_info_content">#174EA6</color>
+    <color name="message_success_background">#E6F4EA</color>
+    <color name="message_success_content">#137333</color>
+    <color name="message_warning_background">#FEF7E0</color>
+    <color name="message_warning_content">#8A4B00</color>
+    <color name="message_error_background">#FCE8E6</color>
+    <color name="message_error_content">#B3261E</color>
 </resources>

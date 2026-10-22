@@ -3,6 +3,7 @@ package dev.fabuloso.slider
 import android.app.AlertDialog
 import android.content.ClipData
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -18,7 +19,6 @@ import android.os.SystemClock
 import android.util.Log
 import android.util.TypedValue
 import android.view.View
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -47,6 +47,7 @@ class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
     private var nfcAdapter: NfcAdapter? = null
     private var lastScrolledHighlight: RecentTagHighlight? = null
+    private val hideMessageBanner = Runnable { hideMessageBanner() }
 
     private val createReadFile = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream"),
@@ -61,13 +62,14 @@ class MainActivity : ComponentActivity() {
         applySystemBarInsets()
         configureTagList()
         configureTopAppBar()
+        binding.btnDismissMessage.setOnClickListener { hideMessageBanner() }
 
         observeViewModel()
 
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
         if (nfcAdapter == null) {
             Log.w(TAG, "This device does not support NFC")
-            toast(R.string.toast_nfc_unavailable)
+            showMessage(R.string.toast_nfc_unavailable)
         } else {
             Log.i(TAG, "Automatic NFC reading is active")
         }
@@ -83,6 +85,11 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         disableReaderMode()
         super.onPause()
+    }
+
+    override fun onDestroy() {
+        binding.messageBanner.removeCallbacks(hideMessageBanner)
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -162,7 +169,8 @@ class MainActivity : ComponentActivity() {
     private fun handleEffect(effect: MainUiEffect) {
         when (effect) {
             is MainUiEffect.LaunchSaveDocument -> createReadFile.launch(effect.suggestedName)
-            is MainUiEffect.ShowMessage -> toast(effect.messageResource)
+            is MainUiEffect.ShowMessage -> showMessage(effect.messageResource)
+            is MainUiEffect.TagDeleted -> showDeletedMessage(effect)
         }
     }
 
@@ -190,7 +198,7 @@ class MainActivity : ComponentActivity() {
         }
         sheet.actionDelete.setOnClickListener {
             dialog.dismiss()
-            confirmDeleteTag(record)
+            viewModel.deleteTag(record.uidHex)
         }
         dialog.setContentView(sheet.root)
         dialog.show()
@@ -247,19 +255,9 @@ class MainActivity : ComponentActivity() {
                 throw cancellation
             } catch (error: Throwable) {
                 Log.e(TAG, "Could not share tag ${record.uidHex}", error)
-                toast(R.string.toast_share_failed)
+                showMessage(R.string.toast_share_failed)
             }
         }
-    }
-
-    private fun confirmDeleteTag(record: TagRecord) {
-        if (!viewModel.uiState.value.canDelete(record.uidHex)) return
-        AlertDialog.Builder(this)
-            .setTitle(R.string.delete_tag_title)
-            .setMessage(getString(R.string.delete_tag_message, record.uidHex))
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.delete) { _, _ -> viewModel.deleteTag(record.uidHex) }
-            .show()
     }
 
     private fun confirmDeleteAll() {
@@ -306,8 +304,135 @@ class MainActivity : ComponentActivity() {
         nfcAdapter?.disableReaderMode(this)
     }
 
-    private fun toast(message: Int) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    private fun showMessage(message: Int) {
+        showMessage(message, messageBannerStyle(message))
+    }
+
+    private fun showDeletedMessage(effect: MainUiEffect.TagDeleted) {
+        showMessage(
+            message = R.string.toast_tag_deleted,
+            style = messageBannerStyle(R.string.toast_tag_deleted).copy(
+                durationMillis = UNDO_BANNER_DURATION_MS,
+            ),
+            actionLabel = R.string.undo,
+            onAction = {
+                viewModel.undoDelete(effect.record, effect.originalIndex)
+            },
+        )
+    }
+
+    private fun showMessage(
+        message: Int,
+        style: MessageBannerStyle,
+        actionLabel: Int? = null,
+        onAction: (() -> Unit)? = null,
+    ) {
+        val banner = binding.messageBanner
+        banner.removeCallbacks(hideMessageBanner)
+        banner.animate().cancel()
+
+        binding.txtMessageBanner.apply {
+            setText(message)
+            setTextColor(ContextCompat.getColor(this@MainActivity, style.contentColor))
+        }
+        binding.btnDismissMessage.apply {
+            visibility = if (style.durationMillis == null && onAction == null) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+            imageTintList = ColorStateList.valueOf(
+                ContextCompat.getColor(this@MainActivity, style.contentColor),
+            )
+        }
+        binding.btnMessageAction.apply {
+            visibility = if (actionLabel != null && onAction != null) View.VISIBLE else View.GONE
+            actionLabel?.let(::setText)
+            setTextColor(ContextCompat.getColor(this@MainActivity, style.contentColor))
+            setOnClickListener(
+                if (onAction == null) {
+                    null
+                } else {
+                    View.OnClickListener {
+                        hideMessageBanner()
+                        onAction()
+                    }
+                },
+            )
+        }
+        banner.setBackgroundResource(style.background)
+
+        if (banner.visibility != View.VISIBLE) {
+            banner.alpha = 0f
+            banner.translationY = -dp(MESSAGE_BANNER_OFFSET_DP).toFloat()
+            banner.visibility = View.VISIBLE
+        }
+        banner.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(MESSAGE_BANNER_ANIMATION_MS)
+            .start()
+
+        style.durationMillis?.let { duration ->
+            banner.postDelayed(hideMessageBanner, duration)
+        }
+    }
+
+    private fun hideMessageBanner() {
+        val banner = binding.messageBanner
+        banner.removeCallbacks(hideMessageBanner)
+        if (banner.visibility != View.VISIBLE) return
+
+        banner.animate().cancel()
+        banner.animate()
+            .alpha(0f)
+            .translationY(-dp(MESSAGE_BANNER_OFFSET_DP).toFloat())
+            .setDuration(MESSAGE_BANNER_ANIMATION_MS)
+            .withEndAction {
+                banner.visibility = View.GONE
+                banner.alpha = 1f
+                banner.translationY = 0f
+            }
+            .start()
+    }
+
+    private fun messageBannerStyle(message: Int): MessageBannerStyle = when (message) {
+        R.string.toast_tag_added,
+        R.string.toast_save_success,
+        R.string.toast_tag_deleted,
+        R.string.toast_tag_restored,
+        R.string.toast_all_deleted,
+        -> MessageBannerStyle(
+            background = R.drawable.bg_message_success,
+            contentColor = R.color.message_success_content,
+            durationMillis = MESSAGE_BANNER_DURATION_MS,
+        )
+
+        R.string.toast_tag_unsupported,
+        R.string.toast_tag_duplicate,
+        -> MessageBannerStyle(
+            background = R.drawable.bg_message_warning,
+            contentColor = R.color.message_warning_content,
+            durationMillis = MESSAGE_BANNER_DURATION_MS,
+        )
+
+        R.string.toast_nfc_unavailable,
+        R.string.toast_read_failed,
+        R.string.toast_storage_failed,
+        R.string.toast_save_failed,
+        R.string.toast_save_missing,
+        R.string.toast_share_failed,
+        -> MessageBannerStyle(
+            background = R.drawable.bg_message_error,
+            contentColor = R.color.message_error_content,
+            durationMillis = null,
+        )
+
+        else -> MessageBannerStyle(
+            background = R.drawable.bg_message_info,
+            contentColor = R.color.message_info_content,
+            durationMillis = MESSAGE_BANNER_DURATION_MS,
+        )
     }
 
     private inner class TagSwipeCallback :
@@ -353,7 +478,7 @@ class MainActivity : ComponentActivity() {
                 }
                 ItemTouchHelper.LEFT -> {
                     resetSwipedRow(item.record.uidHex)
-                    confirmDeleteTag(item.record)
+                    viewModel.deleteTag(item.record.uidHex)
                 }
             }
         }
@@ -473,5 +598,15 @@ class MainActivity : ComponentActivity() {
         private const val SWIPE_CONTENT_MARGIN_DP = 16
         private const val SWIPE_ICON_TEXT_SPACING_DP = 8
         private const val NFC_FILE_MIME_TYPE = "application/octet-stream"
+        private const val MESSAGE_BANNER_DURATION_MS = 3_500L
+        private const val UNDO_BANNER_DURATION_MS = 5_000L
+        private const val MESSAGE_BANNER_ANIMATION_MS = 180L
+        private const val MESSAGE_BANNER_OFFSET_DP = 8
     }
+
+    private data class MessageBannerStyle(
+        val background: Int,
+        val contentColor: Int,
+        val durationMillis: Long?,
+    )
 }

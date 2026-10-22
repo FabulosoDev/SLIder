@@ -11,6 +11,8 @@ interface TagRepository {
 
     suspend fun remove(uidHex: String): Boolean
 
+    suspend fun restore(record: TagRecord, index: Int): AddTagResult
+
     suspend fun clear()
 }
 
