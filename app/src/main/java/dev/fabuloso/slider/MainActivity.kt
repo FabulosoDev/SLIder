@@ -8,6 +8,7 @@ import android.nfc.Tag
 import android.nfc.tech.NfcV
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -28,6 +29,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var tagAdapter: TagListAdapter
     private val viewModel: MainViewModel by viewModels()
     private var nfcAdapter: NfcAdapter? = null
+    private var lastScrolledHighlight: RecentTagHighlight? = null
 
     private val createReadFile = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream"),
@@ -100,15 +102,34 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun render(state: MainUiState) {
-        tagAdapter.submitList(
-            state.tags.map { record ->
-                TagRowItem(
-                    record = record,
-                    saveEnabled = state.canSave(record.uidHex),
-                    deleteEnabled = state.deleteButtonEnabled(record.uidHex),
-                )
-            },
-        )
+        val rows = state.tags.map { record ->
+            TagRowItem(
+                record = record,
+                saveEnabled = state.canSave(record.uidHex),
+                deleteEnabled = state.deleteButtonEnabled(record.uidHex),
+                highlightStartedAtUptimeMillis = state.recentTagHighlight
+                    ?.takeIf { it.uidHex == record.uidHex }
+                    ?.startedAtUptimeMillis ?: 0L,
+            )
+        }
+        val highlight = state.recentTagHighlight
+        if (highlight != null &&
+            highlight != lastScrolledHighlight &&
+            SystemClock.uptimeMillis() - highlight.startedAtUptimeMillis <
+                TagListAdapter.HIGHLIGHT_WINDOW_MS
+        ) {
+            tagAdapter.submitList(rows) {
+                val position = tagAdapter.currentList.indexOfFirst {
+                    it.record.uidHex == highlight.uidHex
+                }
+                if (position >= 0 && highlight != lastScrolledHighlight) {
+                    lastScrolledHighlight = highlight
+                    binding.listTags.scrollToPosition(position)
+                }
+            }
+        } else {
+            tagAdapter.submitList(rows)
+        }
 
         binding.btnDeleteAll.isEnabled = state.deleteAllButtonEnabled
         binding.btnDeleteAll.alpha = if (state.deleteAllButtonEnabled) 1f else DISABLED_ALPHA

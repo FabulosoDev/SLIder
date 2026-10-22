@@ -51,6 +51,10 @@ class MainViewModelTest {
 
         viewModel.enqueueTag(FakeHandle(1))
         viewModel.enqueueTag(FakeHandle(2))
+        advanceUntilIdle()
+        val highlightAfterAdd = viewModel.uiState.value.recentTagHighlight
+        assertEquals(viewModel.uiState.value.tags.last().uidHex, highlightAfterAdd?.uidHex)
+
         viewModel.enqueueTag(FakeHandle(1))
         advanceUntilIdle()
 
@@ -58,6 +62,7 @@ class MainViewModelTest {
         assertEquals(2, viewModel.uiState.value.tags.size)
         assertNull(viewModel.uiState.value.activeScanUid)
         assertEquals(0, viewModel.uiState.value.queuedScanCount)
+        assertEquals(highlightAfterAdd, viewModel.uiState.value.recentTagHighlight)
     }
 
     @Test
@@ -89,6 +94,7 @@ class MainViewModelTest {
             exporter,
         )
         advanceUntilIdle()
+        assertNull(viewModel.uiState.value.recentTagHighlight)
 
         viewModel.requestExport(record.uidHex)
         advanceUntilIdle()

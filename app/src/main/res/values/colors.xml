@@ -4,6 +4,7 @@
     <color name="screen_background">#FFFFFF</color>
     <color name="primary_text">#202124</color>
     <color name="list_divider">#DADCE0</color>
+    <color name="new_tag_highlight">#D8EAFF</color>
     <color name="action_blue">#0D6EFD</color>
     <color name="action_red">#D93025</color>
     <color name="dialog_accent">#0D6EFD</color>
