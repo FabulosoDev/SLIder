@@ -2,6 +2,7 @@ package dev.fabuloso.slider
 
 import android.app.Application
 import android.net.Uri
+import android.os.SystemClock
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
@@ -26,6 +27,7 @@ data class MainUiState(
     val isClearing: Boolean = false,
     val pendingExportUid: String? = null,
     val isExporting: Boolean = false,
+    val newTagBadge: NewTagBadge? = null,
 ) {
     val scansBusy: Boolean
         get() = activeScanUid != null || queuedScanCount > 0
@@ -55,14 +57,14 @@ data class MainUiState(
             !isMutating &&
             pendingExportUid != uidHex
 
-    fun deleteButtonEnabled(uidHex: String): Boolean =
-        !isLoading &&
-            !isMutating &&
-            pendingExportUid != uidHex
 }
+
+data class NewTagBadge(val uidHex: String, val startedAtUptimeMillis: Long)
 
 sealed interface MainUiEffect {
     data class ShowMessage(val messageResource: Int) : MainUiEffect
+
+    data class TagDeleted(val record: TagRecord, val originalIndex: Int) : MainUiEffect
 
     data class LaunchSaveDocument(val suggestedName: String) : MainUiEffect
 }
@@ -169,17 +171,47 @@ class MainViewModel(
     fun deleteTag(uidHex: String) {
         val state = mutableUiState.value
         if (!state.canDelete(uidHex)) return
+        val originalIndex = state.tags.indexOfFirst { it.uidHex == uidHex }
+        val record = state.tags.getOrNull(originalIndex) ?: return
 
         mutableUiState.update {
             it.copy(isMutating = true, mutatingUid = uidHex, isClearing = false)
         }
         viewModelScope.launch {
             try {
-                if (repository.remove(uidHex)) showMessage(R.string.toast_tag_deleted)
+                if (repository.remove(uidHex)) {
+                    effectChannel.send(MainUiEffect.TagDeleted(record, originalIndex))
+                }
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (error: Throwable) {
                 Log.e(TAG, "Could not delete tag $uidHex", error)
+                showMessage(R.string.toast_storage_failed)
+            } finally {
+                mutableUiState.update {
+                    it.copy(isMutating = false, mutatingUid = null, isClearing = false)
+                }
+            }
+        }
+    }
+
+    fun undoDelete(record: TagRecord, originalIndex: Int) {
+        val state = mutableUiState.value
+        if (state.isLoading || state.isMutating) return
+        if (state.tags.any { it.uidHex == record.uidHex }) return
+
+        mutableUiState.update {
+            it.copy(isMutating = true, mutatingUid = record.uidHex, isClearing = false)
+        }
+        viewModelScope.launch {
+            try {
+                if (repository.restore(record, originalIndex) == AddTagResult.ADDED) {
+                    showMessage(R.string.toast_tag_restored)
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Throwable) {
+                Log.e(TAG, "Could not restore tag ${record.uidHex}", error)
                 showMessage(R.string.toast_storage_failed)
             } finally {
                 mutableUiState.update {
@@ -273,6 +305,15 @@ class MainViewModel(
             when (repository.add(record)) {
                 AddTagResult.ADDED -> {
                     Log.i(TAG, "Added tag ${record.uidHex}")
+                    mutableUiState.update {
+                        it.copy(
+                            tags = repository.records.value,
+                            newTagBadge = NewTagBadge(
+                                record.uidHex,
+                                SystemClock.uptimeMillis(),
+                            ),
+                        )
+                    }
                     showMessage(R.string.toast_tag_added)
                 }
 
@@ -315,4 +356,5 @@ class MainViewModel(
         private const val TAG = "SLIder"
         private const val STATE_PENDING_EXPORT_UID = "pendingExportUid"
     }
+
 }

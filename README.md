@@ -72,7 +72,7 @@ adb shell am start -n dev.fabuloso.slider/.MainActivity
 
 ## NFC workflow
 
-Open SLIder and hold a compatible NfcV tag against the phone. The tag is read automatically and added to the list; the save picker is not opened automatically. Tap the save icon on a row when you want to export that tag as a Flipper `.nfc` file. Use the delete icon to remove one tag, or **Delete all** to clear the list. Both delete actions ask for confirmation.
+Open SLIder and hold a compatible NfcV tag against the phone. The tag is read automatically and added to the list; the save picker is not opened automatically. Swipe a row right to share its Flipper `.nfc` file, or swipe it left and confirm to delete it. Tap a row to open its Save, Share, and Delete actions; deleting from this sheet also asks for confirmation. Use **Delete all** in the top-right overflow menu to clear the list; this bulk action asks for confirmation.
 
 Scanned tags remain in the list across app restarts until deleted. Scanning a UID that is already listed leaves the existing entry unchanged and displays a short message.
 

@@ -1,6 +1,8 @@
 package dev.fabuloso.slider
 
+import android.os.SystemClock
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -9,13 +11,13 @@ import dev.fabuloso.slider.databinding.ItemTagBinding
 
 data class TagRowItem(
     val record: TagRecord,
-    val saveEnabled: Boolean,
+    val shareEnabled: Boolean,
     val deleteEnabled: Boolean,
+    val newBadgeStartedAtUptimeMillis: Long = 0L,
 )
 
 class TagListAdapter(
-    private val onSave: (TagRecord) -> Unit,
-    private val onDelete: (TagRecord) -> Unit,
+    private val onClick: (TagRecord) -> Unit,
 ) : ListAdapter<TagRowItem, TagListAdapter.ViewHolder>(DiffCallback) {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val binding = ItemTagBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -26,16 +28,32 @@ class TagListAdapter(
         holder.bind(getItem(position))
     }
 
+    override fun onViewRecycled(holder: ViewHolder) {
+        holder.clearNewBadge()
+        super.onViewRecycled(holder)
+    }
+
     inner class ViewHolder(private val binding: ItemTagBinding) :
         RecyclerView.ViewHolder(binding.root) {
+        private val hideNewBadge = Runnable {
+            binding.txtNewBadge.visibility = View.GONE
+        }
+
         fun bind(item: TagRowItem) {
             binding.txtUid.text = item.record.uid.toHexColonSeparated()
-            binding.btnSave.isEnabled = item.saveEnabled
-            binding.btnSave.alpha = if (item.saveEnabled) 1f else DISABLED_ALPHA
-            binding.btnDelete.isEnabled = item.deleteEnabled
-            binding.btnDelete.alpha = if (item.deleteEnabled) 1f else DISABLED_ALPHA
-            binding.btnSave.setOnClickListener { onSave(item.record) }
-            binding.btnDelete.setOnClickListener { onDelete(item.record) }
+            binding.root.setOnClickListener { onClick(item.record) }
+
+            clearNewBadge()
+            val elapsed = SystemClock.uptimeMillis() - item.newBadgeStartedAtUptimeMillis
+            if (item.newBadgeStartedAtUptimeMillis > 0L && elapsed in 0 until NEW_BADGE_WINDOW_MS) {
+                binding.txtNewBadge.visibility = View.VISIBLE
+                binding.txtNewBadge.postDelayed(hideNewBadge, NEW_BADGE_WINDOW_MS - elapsed)
+            }
+        }
+
+        fun clearNewBadge() {
+            binding.txtNewBadge.removeCallbacks(hideNewBadge)
+            binding.txtNewBadge.visibility = View.GONE
         }
     }
 
@@ -48,6 +66,6 @@ class TagListAdapter(
     }
 
     companion object {
-        private const val DISABLED_ALPHA = 0.45f
+        internal const val NEW_BADGE_WINDOW_MS = 3_000L
     }
 }

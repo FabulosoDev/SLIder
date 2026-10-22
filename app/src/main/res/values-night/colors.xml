@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="screen_background">#121212</color>
+    <color name="primary_text">#E8EAED</color>
+    <color name="list_divider">#3C4043</color>
+    <color name="dialog_accent">#8AB4F8</color>
+    <color name="message_info_background">#1A3358</color>
+    <color name="message_info_content">#D2E3FC</color>
+    <color name="message_success_background">#163C2A</color>
+    <color name="message_success_content">#CEEAD6</color>
+    <color name="message_warning_background">#4A3511</color>
+    <color name="message_warning_content">#FEEFC3</color>
+    <color name="message_error_background">#54201D</color>
+    <color name="message_error_content">#FAD2CF</color>
+</resources>

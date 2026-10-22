@@ -1,13 +1,20 @@
 package dev.fabuloso.slider
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import java.util.TimeZone
 
 class CoreModelTest {
+    @get:Rule
+    val temporaryFolder = TemporaryFolder()
+
     @Test
     fun `hex helpers format unsigned bytes and reverse uid prefixes`() {
         val bytes = byteArrayOf(0x01, 0xA5.toByte(), 0xFF.toByte())
@@ -76,5 +83,22 @@ class CoreModelTest {
         } finally {
             TimeZone.setDefault(previous)
         }
+    }
+
+    @Test
+    fun `share file creator writes an nfc file under the dedicated cache path`() = runBlocking {
+        val record = TagRecord(
+            uid = byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8),
+            blockCount = 1,
+            blockSize = 4,
+            data = byteArrayOf(0x10, 0x11, 0x12, 0x13),
+            readAtEpochMillis = 0L,
+        )
+
+        val file = TagShareFileCreator(temporaryFolder.root, Dispatchers.Unconfined).create(record)
+
+        assertEquals("shared_tags", file.parentFile?.name)
+        assertTrue(file.name.endsWith("_08070605.nfc"))
+        assertTrue(file.readText().contains("Data Content: 10 11 12 13"))
     }
 }
