@@ -46,8 +46,8 @@ class MainActivity : ComponentActivity() {
         setContentView(binding.root)
         applySystemBarInsets()
         configureTagList()
+        configureTopAppBar()
 
-        binding.btnDeleteAll.setOnClickListener { confirmDeleteAll() }
         observeViewModel()
 
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
@@ -96,6 +96,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun configureTopAppBar() {
+        binding.topAppBar.inflateMenu(R.menu.main_menu)
+        binding.topAppBar.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.actionDeleteAll -> {
+                    confirmDeleteAll()
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
     private fun observeViewModel() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -136,8 +149,8 @@ class MainActivity : ComponentActivity() {
             tagAdapter.submitList(rows)
         }
 
-        binding.btnDeleteAll.isEnabled = state.deleteAllButtonEnabled
-        binding.btnDeleteAll.alpha = if (state.deleteAllButtonEnabled) 1f else DISABLED_ALPHA
+        binding.topAppBar.menu.findItem(R.id.actionDeleteAll)?.isEnabled =
+            state.deleteAllButtonEnabled
     }
 
     private fun handleEffect(effect: MainUiEffect) {
@@ -257,7 +270,6 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "SLIder"
-        private const val DISABLED_ALPHA = 0.45f
         private const val NFC_FILE_MIME_TYPE = "application/octet-stream"
     }
 }
