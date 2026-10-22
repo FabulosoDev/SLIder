@@ -38,16 +38,15 @@
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="2.1"
+            android:layout_weight="1"
             android:text="@string/column_uid"
             android:textColor="@color/primary_text"
             android:textSize="18sp"
             android:textStyle="bold" />
 
         <TextView
-            android:layout_width="0dp"
+            android:layout_width="160dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1.2"
             android:gravity="center"
             android:text="@string/column_actions"
             android:textColor="@color/primary_text"

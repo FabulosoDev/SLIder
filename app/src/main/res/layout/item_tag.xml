@@ -15,7 +15,7 @@
         android:id="@+id/txtUid"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_weight="2.1"
+        android:layout_weight="1"
         android:ellipsize="end"
         android:maxLines="1"
         android:paddingStart="0dp"
@@ -24,9 +24,8 @@
         android:textSize="16sp" />
 
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_weight="1.2"
         android:gravity="center"
         android:orientation="horizontal">
 
@@ -42,6 +41,21 @@
             android:focusable="false"
             android:padding="8dp"
             android:src="@drawable/ic_save"
+            android:tint="#FFFFFF" />
+
+        <ImageButton
+            android:id="@+id/btnShare"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:background="@drawable/bg_action_button"
+            android:backgroundTint="@color/action_share"
+            android:contentDescription="@string/share_tag"
+            android:elevation="2dp"
+            android:focusable="false"
+            android:padding="8dp"
+            android:src="@drawable/ic_share"
             android:tint="#FFFFFF" />
 
         <ImageButton

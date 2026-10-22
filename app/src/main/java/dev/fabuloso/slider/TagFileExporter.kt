@@ -5,6 +5,7 @@ import android.net.Uri
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -27,6 +28,32 @@ class ContentResolverTagFileExporter(
         val output = contentResolver.openOutputStream(destination)
             ?: error("Unable to open destination")
         output.use { it.write(text.toByteArray(Charsets.UTF_8)) }
+    }
+}
+
+class TagShareFileCreator(
+    private val cacheDirectory: File,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+) {
+    suspend fun create(record: TagRecord): File = withContext(ioDispatcher) {
+        val shareDirectory = File(cacheDirectory, SHARE_DIRECTORY).apply {
+            check(isDirectory || mkdirs()) { "Unable to create share directory" }
+        }
+        File(shareDirectory, TagFileNameFormatter.format(record)).apply {
+            writeText(
+                FlipperNfcSerializer.serialize(
+                    uid = record.uid,
+                    data = record.data,
+                    blockCount = record.blockCount,
+                    blockSize = record.blockSize,
+                ),
+                Charsets.UTF_8,
+            )
+        }
+    }
+
+    private companion object {
+        const val SHARE_DIRECTORY = "shared_tags"
     }
 }
 
