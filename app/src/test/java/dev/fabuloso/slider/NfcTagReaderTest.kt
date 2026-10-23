@@ -48,6 +48,23 @@ class NfcTagReaderTest {
         assertTrue(progress.any { it.contains("System info unavailable") })
     }
 
+    @Test
+    fun `reader uses high data rate flag when low data rate is disabled`() = runTest {
+        val transport = ScriptedTransport(blockCount = 1)
+        val reader = DefaultNfcTagReader(
+            ioDispatcher = Dispatchers.Unconfined,
+            lowDataRate = { false },
+            retryDelay = {},
+        )
+
+        reader.readConnected(transport, ByteArray(8))
+
+        assertTrue(transport.frames.isNotEmpty())
+        transport.frames.forEach { frame ->
+            assertEquals(0x22, frame[0].toInt() and 0xFF)
+        }
+    }
+
     private class ScriptedTransport(
         private val selectFailures: Int = 0,
         private val blockCount: Int = 8,

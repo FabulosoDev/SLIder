@@ -1,6 +1,7 @@
 package dev.fabuloso.slider
 
 import android.app.AlertDialog
+import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.Intent
 import android.content.res.ColorStateList
@@ -16,6 +17,7 @@ import android.nfc.tech.NfcV
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import android.provider.Settings
 import android.util.Log
 import android.util.TypedValue
 import android.view.View
@@ -44,8 +46,11 @@ import java.util.Date
 class MainActivity : ComponentActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var tagAdapter: TagListAdapter
+    private lateinit var appSettings: AppSettings
     private val viewModel: MainViewModel by viewModels()
     private var nfcAdapter: NfcAdapter? = null
+    private var nfcSettingsLaunched = false
+    private var currentMessage: Int? = null
     private var lastScrolledNewBadge: NewTagBadge? = null
     private val hideMessageBanner = Runnable { hideMessageBanner() }
 
@@ -57,6 +62,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        appSettings = AppSettings(this)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         applySystemBarInsets()
@@ -70,8 +76,6 @@ class MainActivity : ComponentActivity() {
         if (nfcAdapter == null) {
             Log.w(TAG, "This device does not support NFC")
             showMessage(R.string.toast_nfc_unavailable)
-        } else {
-            Log.i(TAG, "Automatic NFC reading is active")
         }
 
         if (savedInstanceState == null) handleIntent(intent)
@@ -79,7 +83,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        enableReaderMode()
+        updateNfcState()
     }
 
     override fun onPause() {
@@ -112,8 +116,15 @@ class MainActivity : ComponentActivity() {
 
     private fun configureTopAppBar() {
         binding.topAppBar.inflateMenu(R.menu.main_menu)
+        binding.topAppBar.menu.findItem(R.id.actionLowDataRate)?.isChecked =
+            appSettings.lowDataRateEnabled
         binding.topAppBar.setOnMenuItemClickListener { item ->
             when (item.itemId) {
+                R.id.actionLowDataRate -> {
+                    item.isChecked = !item.isChecked
+                    appSettings.lowDataRateEnabled = item.isChecked
+                    true
+                }
                 R.id.actionDeleteAll -> {
                     confirmDeleteAll()
                     true
@@ -300,6 +311,36 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    private fun updateNfcState() {
+        val adapter = nfcAdapter ?: return
+        if (adapter.isEnabled) {
+            nfcSettingsLaunched = false
+            if (currentMessage == R.string.toast_nfc_disabled) hideMessageBanner()
+            enableReaderMode()
+            Log.i(TAG, "Automatic NFC reading is active")
+            return
+        }
+
+        Log.w(TAG, "NFC is disabled")
+        showMessage(
+            message = R.string.toast_nfc_disabled,
+            style = messageBannerStyle(R.string.toast_nfc_disabled),
+            actionLabel = R.string.open_settings,
+            onAction = ::openNfcSettings,
+        )
+        if (!nfcSettingsLaunched) openNfcSettings()
+    }
+
+    private fun openNfcSettings() {
+        nfcSettingsLaunched = true
+        try {
+            startActivity(Intent(Settings.ACTION_NFC_SETTINGS))
+        } catch (error: ActivityNotFoundException) {
+            Log.w(TAG, "Dedicated NFC settings are unavailable; opening wireless settings", error)
+            startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS))
+        }
+    }
+
     private fun disableReaderMode() {
         nfcAdapter?.disableReaderMode(this)
     }
@@ -327,6 +368,7 @@ class MainActivity : ComponentActivity() {
         actionLabel: Int? = null,
         onAction: (() -> Unit)? = null,
     ) {
+        currentMessage = message
         val banner = binding.messageBanner
         banner.removeCallbacks(hideMessageBanner)
         banner.animate().cancel()
@@ -382,6 +424,7 @@ class MainActivity : ComponentActivity() {
         val banner = binding.messageBanner
         banner.removeCallbacks(hideMessageBanner)
         if (banner.visibility != View.VISIBLE) return
+        currentMessage = null
 
         banner.animate().cancel()
         banner.animate()
@@ -417,6 +460,7 @@ class MainActivity : ComponentActivity() {
         )
 
         R.string.toast_nfc_unavailable,
+        R.string.toast_nfc_disabled,
         R.string.toast_read_failed,
         R.string.toast_storage_failed,
         R.string.toast_save_failed,

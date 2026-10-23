@@ -72,7 +72,9 @@ adb shell am start -n dev.fabuloso.slider/.MainActivity
 
 ## NFC workflow
 
-Open SLIder and hold a compatible NfcV tag against the phone. The tag is read automatically and added to the list; the save picker is not opened automatically. Swipe a row right to share its Flipper `.nfc` file, or swipe it left and confirm to delete it. Tap a row to open its Save, Share, and Delete actions; deleting from this sheet also asks for confirmation. Use **Delete all** in the top-right overflow menu to clear the list; this bulk action asks for confirmation.
+Open SLIder and hold a compatible NfcV tag against the phone. The tag is read automatically and added to the list; the save picker is not opened automatically. Swipe a row right to share its Flipper `.nfc` file, or swipe it left and confirm to delete it. Tap a row to open its Save, Share, and Delete actions; deleting from this sheet also asks for confirmation. High data rate is used by default; enable **Low data rate** in the top-right overflow menu when needed. The saved choice applies to the next scan. Use **Delete all** in the same menu to clear the list; this bulk action asks for confirmation.
+
+If NFC is switched off when SLIder starts, the app detects it and automatically opens Android's NFC settings. Reader mode starts as soon as you return with NFC enabled. If you leave NFC disabled, the message in SLIder includes an **Open settings** action.
 
 Scanned tags remain in the list across app restarts until deleted. Scanning a UID that is already listed leaves the existing entry unchanged and displays a short message.
 

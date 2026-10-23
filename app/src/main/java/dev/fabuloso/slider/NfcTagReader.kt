@@ -15,12 +15,10 @@ interface NfcTagReader {
 
 class DefaultNfcTagReader(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val lowDataRate: Boolean = true,
+    private val lowDataRate: () -> Boolean = { true },
     private val clock: () -> Long = System::currentTimeMillis,
     private val retryDelay: suspend (Long) -> Unit = { delay(it) },
 ) : NfcTagReader {
-    private val commandFlags: Byte = if (lowDataRate) 0x20 else 0x22
-
     override suspend fun read(
         tag: NfcTagHandle,
         onProgress: (String) -> Unit,
@@ -39,12 +37,13 @@ class DefaultNfcTagReader(
     ): TagRecord {
         require(uidMsb.size == TagRecord.UID_SIZE) { "UID must be 8 bytes" }
         val readAt = clock()
+        val commandFlags: Byte = if (lowDataRate()) 0x20 else 0x22
 
         onProgress("Selecting tag...")
-        selectCard(transport, uidMsb)
+        selectCard(transport, uidMsb, commandFlags)
         retryDelay(SELECT_SETTLE_DELAY_MS)
 
-        val geometry = getSystemInfoAddressed(transport, uidMsb)
+        val geometry = getSystemInfoAddressed(transport, uidMsb, commandFlags)
             ?: BlockGeometry(DEFAULT_BLOCK_COUNT, DEFAULT_BLOCK_SIZE).also {
                 onProgress("System info unavailable; using 8 blocks x 4 bytes")
             }
@@ -57,6 +56,7 @@ class DefaultNfcTagReader(
                 uidMsb = uidMsb,
                 blockNumber = block,
                 blockSize = geometry.blockSize,
+                commandFlags = commandFlags,
             )
             blockData.copyInto(data, destinationOffset = block * geometry.blockSize)
             onProgress("Block ${block.toString().padStart(2, '0')} read")
@@ -72,8 +72,16 @@ class DefaultNfcTagReader(
         )
     }
 
-    private suspend fun selectCard(transport: NfcTransport, uidMsb: ByteArray) {
-        val frame = addressedFrame(command = SELECT_COMMAND, uidMsb = uidMsb)
+    private suspend fun selectCard(
+        transport: NfcTransport,
+        uidMsb: ByteArray,
+        commandFlags: Byte,
+    ) {
+        val frame = addressedFrame(
+            command = SELECT_COMMAND,
+            uidMsb = uidMsb,
+            commandFlags = commandFlags,
+        )
         transceiveCheckedWithRetry(
             transport = transport,
             frame = frame,
@@ -86,11 +94,16 @@ class DefaultNfcTagReader(
     private fun getSystemInfoAddressed(
         transport: NfcTransport,
         uidMsb: ByteArray,
+        commandFlags: Byte,
     ): BlockGeometry? {
         return try {
             val response = transceiveChecked(
                 transport,
-                addressedFrame(command = SYSTEM_INFO_COMMAND, uidMsb = uidMsb),
+                addressedFrame(
+                    command = SYSTEM_INFO_COMMAND,
+                    uidMsb = uidMsb,
+                    commandFlags = commandFlags,
+                ),
             )
             if (response.size < MINIMUM_SYSTEM_INFO_SIZE) return null
 
@@ -116,11 +129,13 @@ class DefaultNfcTagReader(
         uidMsb: ByteArray,
         blockNumber: Int,
         blockSize: Int,
+        commandFlags: Byte,
     ): ByteArray {
         val frame = addressedFrame(
             command = READ_SINGLE_BLOCK_COMMAND,
             uidMsb = uidMsb,
             trailingByte = blockNumber,
+            commandFlags = commandFlags,
         )
         val response = transceiveCheckedWithRetry(
             transport = transport,
@@ -139,6 +154,7 @@ class DefaultNfcTagReader(
         command: Int,
         uidMsb: ByteArray,
         trailingByte: Int? = null,
+        commandFlags: Byte,
     ): ByteArray {
         val frame = ByteArray(if (trailingByte == null) 10 else 11)
         frame[0] = commandFlags

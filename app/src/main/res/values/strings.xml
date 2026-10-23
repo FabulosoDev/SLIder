@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">SLIder</string>
     <string name="delete_all">Delete all</string>
+    <string name="low_data_rate">Low data rate</string>
     <string name="column_uid">UID</string>
     <string name="new_tag_badge">new</string>
     <string name="swipe_share">Share</string>
@@ -15,7 +16,9 @@
     <string name="cancel">Cancel</string>
     <string name="undo">Undo</string>
     <string name="dismiss_message">Dismiss message</string>
+    <string name="open_settings">Open settings</string>
     <string name="toast_nfc_unavailable">NFC is not available on this device.</string>
+    <string name="toast_nfc_disabled">NFC is switched off. Enable it to scan tags.</string>
     <string name="toast_tag_unsupported">This tag is not ISO15693 compatible.</string>
     <string name="toast_read_failed">Could not read the tag.</string>
     <string name="toast_tag_added">Tag added.</string>
