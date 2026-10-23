@@ -4,11 +4,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
 import java.util.TimeZone
 
 class CoreModelTest {
@@ -119,6 +121,36 @@ class CoreModelTest {
         assertEquals("shared_tags", file.parentFile?.name)
         assertTrue(file.name.endsWith("_04030201.nfc"))
         assertTrue(file.readText().contains("Data Content: 10 11 12 13"))
+    }
+
+    @Test
+    fun `share file creator removes stale files and preserves recent files`() = runBlocking {
+        val now = TagShareFileCreator.SHARED_FILE_MAX_AGE_MS * 2
+        val shareDirectory = temporaryFolder.newFolder(TagShareFileCreator.SHARE_DIRECTORY)
+        val staleFile = File(shareDirectory, "stale.nfc").apply {
+            writeText("stale")
+            setLastModified(now - TagShareFileCreator.SHARED_FILE_MAX_AGE_MS - 1L)
+        }
+        val recentFile = File(shareDirectory, "recent.nfc").apply {
+            writeText("recent")
+            setLastModified(now - TagShareFileCreator.SHARED_FILE_MAX_AGE_MS + 1L)
+        }
+        val record = TagRecord(
+            uid = supportedUid(),
+            blockCount = SlixLProfile.BLOCK_COUNT,
+            blockSize = SlixLProfile.BLOCK_SIZE,
+            data = ByteArray(SlixLProfile.BLOCK_COUNT * SlixLProfile.BLOCK_SIZE),
+            readAtEpochMillis = 0L,
+        )
+
+        TagShareFileCreator(
+            cacheDirectory = temporaryFolder.root,
+            ioDispatcher = Dispatchers.Unconfined,
+            currentTimeMillis = { now },
+        ).create(record)
+
+        assertFalse(staleFile.exists())
+        assertTrue(recentFile.exists())
     }
 
     private fun supportedUid() = byteArrayOf(
