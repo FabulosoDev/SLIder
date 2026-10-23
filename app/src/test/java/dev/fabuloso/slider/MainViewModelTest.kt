@@ -83,6 +83,33 @@ class MainViewModelTest {
     }
 
     @Test
+    fun `unsupported scan reports the dedicated message`() = runTest(dispatcher) {
+        val unsupportedReader = object : NfcTagReader {
+            override suspend fun read(
+                tag: NfcTagHandle,
+                onProgress: (String) -> Unit,
+            ): TagRecord = throw UnsupportedTagException("Unsupported test tag")
+        }
+        val viewModel = MainViewModel(
+            application,
+            SavedStateHandle(),
+            FakeRepository(),
+            unsupportedReader,
+            FakeExporter(),
+        )
+        advanceUntilIdle()
+
+        val message = async { viewModel.effects.first() }
+        viewModel.enqueueTag(FakeHandle(1))
+        advanceUntilIdle()
+
+        assertEquals(
+            R.string.toast_tag_unsupported,
+            (message.await() as MainUiEffect.ShowMessage).messageResource,
+        )
+    }
+
+    @Test
     fun `export retains pending uid and clears it after write`() = runTest(dispatcher) {
         val record = record(4)
         val repository = FakeRepository(listOf(record))

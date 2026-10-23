@@ -50,19 +50,36 @@ class CoreModelTest {
     }
 
     @Test
-    fun `serializer preserves flipper format and validates data length`() {
+    fun `serializer preserves flipper format and validates the supported profile`() {
+        val uid = supportedUid()
+        val data = ByteArray(SlixLProfile.BLOCK_COUNT * SlixLProfile.BLOCK_SIZE) {
+            (it + 0x10).toByte()
+        }
         val output = FlipperNfcSerializer.serialize(
-            uid = byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8),
-            data = byteArrayOf(0x10, 0x11, 0x12, 0x13),
-            blockCount = 1,
-            blockSize = 4,
+            uid = uid,
+            data = data,
+            blockCount = SlixLProfile.BLOCK_COUNT,
+            blockSize = SlixLProfile.BLOCK_SIZE,
         )
 
         assertTrue(output.contains("Device type: SLIX"))
-        assertTrue(output.contains("UID: 01 02 03 04 05 06 07 08"))
+        assertTrue(output.contains("UID: E0 04 03 10 01 02 03 04"))
         assertTrue(output.contains("Data Content: 10 11 12 13"))
         assertThrows(IllegalArgumentException::class.java) {
-            FlipperNfcSerializer.serialize(ByteArray(8), ByteArray(3), 1, 4)
+            FlipperNfcSerializer.serialize(
+                uid,
+                ByteArray(data.size - 1),
+                SlixLProfile.BLOCK_COUNT,
+                SlixLProfile.BLOCK_SIZE,
+            )
+        }
+        assertThrows(UnsupportedTagException::class.java) {
+            FlipperNfcSerializer.serialize(
+                ByteArray(TagRecord.UID_SIZE),
+                data,
+                SlixLProfile.BLOCK_COUNT,
+                SlixLProfile.BLOCK_SIZE,
+            )
         }
     }
 
@@ -88,17 +105,30 @@ class CoreModelTest {
     @Test
     fun `share file creator writes an nfc file under the dedicated cache path`() = runBlocking {
         val record = TagRecord(
-            uid = byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8),
-            blockCount = 1,
-            blockSize = 4,
-            data = byteArrayOf(0x10, 0x11, 0x12, 0x13),
+            uid = supportedUid(),
+            blockCount = SlixLProfile.BLOCK_COUNT,
+            blockSize = SlixLProfile.BLOCK_SIZE,
+            data = ByteArray(SlixLProfile.BLOCK_COUNT * SlixLProfile.BLOCK_SIZE) {
+                (it + 0x10).toByte()
+            },
             readAtEpochMillis = 0L,
         )
 
         val file = TagShareFileCreator(temporaryFolder.root, Dispatchers.Unconfined).create(record)
 
         assertEquals("shared_tags", file.parentFile?.name)
-        assertTrue(file.name.endsWith("_08070605.nfc"))
+        assertTrue(file.name.endsWith("_04030201.nfc"))
         assertTrue(file.readText().contains("Data Content: 10 11 12 13"))
     }
+
+    private fun supportedUid() = byteArrayOf(
+        0xE0.toByte(),
+        0x04,
+        0x03,
+        0x10,
+        1,
+        2,
+        3,
+        4,
+    )
 }

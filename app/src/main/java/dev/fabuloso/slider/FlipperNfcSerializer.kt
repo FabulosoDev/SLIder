@@ -1,8 +1,9 @@
 package dev.fabuloso.slider
 
 object FlipperNfcSerializer {
-    fun serialize(uid: ByteArray, data: ByteArray, blockCount: Int = 8, blockSize: Int = 4): String {
-        require(uid.size == TagRecord.UID_SIZE) { "UID must be 8 bytes" }
+    fun serialize(uid: ByteArray, data: ByteArray, blockCount: Int, blockSize: Int): String {
+        SlixLProfile.requireSupportedUid(uid)
+        SlixLProfile.requireSupportedGeometry(blockCount, blockSize)
         require(blockCount in 1..TagRecord.MAX_BLOCK_COUNT) { "Block Count must be 1..256" }
         require(blockSize in 1..TagRecord.MAX_BLOCK_SIZE) { "Block Size must be 1..0x20" }
         require(data.size == blockCount * blockSize) {

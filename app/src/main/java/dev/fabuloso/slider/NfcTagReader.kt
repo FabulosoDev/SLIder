@@ -24,6 +24,7 @@ class DefaultNfcTagReader(
         onProgress: (String) -> Unit,
     ): TagRecord = withContext(ioDispatcher) {
         val uid = tag.uidMsb
+        SlixLProfile.requireSupportedUid(uid)
         tag.openTransport().use { transport ->
             transport.connect()
             readConnected(transport, uid, onProgress)
@@ -35,7 +36,7 @@ class DefaultNfcTagReader(
         uidMsb: ByteArray,
         onProgress: (String) -> Unit = {},
     ): TagRecord {
-        require(uidMsb.size == TagRecord.UID_SIZE) { "UID must be 8 bytes" }
+        SlixLProfile.requireSupportedUid(uidMsb)
         val readAt = clock()
         val commandFlags: Byte = if (lowDataRate()) 0x20 else 0x22
 
@@ -43,10 +44,11 @@ class DefaultNfcTagReader(
         selectCard(transport, uidMsb, commandFlags)
         retryDelay(SELECT_SETTLE_DELAY_MS)
 
-        val geometry = getSystemInfoAddressed(transport, uidMsb, commandFlags)
-            ?: BlockGeometry(DEFAULT_BLOCK_COUNT, DEFAULT_BLOCK_SIZE).also {
-                onProgress("System info unavailable; using 8 blocks x 4 bytes")
-            }
+        val geometry = getSystemInfoAddressed(transport, uidMsb, commandFlags)?.also {
+            SlixLProfile.requireSupportedGeometry(it.blockCount, it.blockSize)
+        } ?: BlockGeometry(SlixLProfile.BLOCK_COUNT, SlixLProfile.BLOCK_SIZE).also {
+            onProgress("System info unavailable; using the supported SLIX-L geometry")
+        }
         onProgress("Reading ${geometry.blockCount} blocks x ${geometry.blockSize} bytes")
 
         val data = ByteArray(geometry.blockCount * geometry.blockSize)
@@ -114,8 +116,7 @@ class DefaultNfcTagReader(
             if ((infoFlags and 0x04) == 0 || response.size < offset + 2) return null
 
             val blockCount = (response[offset].toInt() and 0xFF) + 1
-            val blockSize = ((response[offset + 1].toInt() and 0x1F) + 1)
-                .coerceAtMost(COMPATIBLE_MAX_BLOCK_SIZE)
+            val blockSize = (response[offset + 1].toInt() and 0x1F) + 1
             BlockGeometry(blockCount, blockSize)
         } catch (cancellation: CancellationException) {
             throw cancellation
@@ -211,9 +212,6 @@ class DefaultNfcTagReader(
         private const val SELECT_RETRY_DELAY_MS = 10L
         private const val READ_RETRY_DELAY_MS = 15L
         private const val SELECT_SETTLE_DELAY_MS = 5L
-        private const val DEFAULT_BLOCK_COUNT = 8
-        private const val DEFAULT_BLOCK_SIZE = 4
-        private const val COMPATIBLE_MAX_BLOCK_SIZE = 4
         private const val MINIMUM_SYSTEM_INFO_SIZE = 12
         private const val SYSTEM_INFO_DATA_OFFSET = 10
     }
