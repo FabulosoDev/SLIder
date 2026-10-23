@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">SLIder</string>
     <string name="delete_all">Delete all</string>
+    <string name="low_data_rate">Low data rate</string>
     <string name="column_uid">UID</string>
     <string name="new_tag_badge">new</string>
     <string name="swipe_share">Share</string>
