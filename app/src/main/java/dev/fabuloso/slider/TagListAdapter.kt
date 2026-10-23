@@ -14,7 +14,11 @@ data class TagRowItem(
     val shareEnabled: Boolean,
     val deleteEnabled: Boolean,
     val newBadgeStartedAtUptimeMillis: Long = 0L,
-)
+) {
+    fun hasSameRenderedContent(other: TagRowItem): Boolean =
+        record == other.record &&
+            newBadgeStartedAtUptimeMillis == other.newBadgeStartedAtUptimeMillis
+}
 
 class TagListAdapter(
     private val onClick: (TagRecord) -> Unit,
@@ -62,7 +66,7 @@ class TagListAdapter(
             oldItem.record.uidHex == newItem.record.uidHex
 
         override fun areContentsTheSame(oldItem: TagRowItem, newItem: TagRowItem): Boolean =
-            oldItem == newItem
+            oldItem.hasSameRenderedContent(newItem)
     }
 
     companion object {
