@@ -453,6 +453,7 @@ class MainActivity : ComponentActivity() {
 
         R.string.toast_tag_unsupported,
         R.string.toast_tag_duplicate,
+        R.string.toast_scan_queue_full,
         -> MessageBannerStyle(
             background = R.drawable.bg_message_warning,
             contentColor = R.color.message_warning_content,
