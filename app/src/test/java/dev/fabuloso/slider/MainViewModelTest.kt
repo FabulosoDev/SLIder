@@ -45,12 +45,13 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `scan queue is FIFO and duplicate persistence is isolated`() = runTest(dispatcher) {
+    fun `scan queue is FIFO and duplicate scans avoid another read`() = runTest(dispatcher) {
         val repository = FakeRepository()
         val reader = FakeReader()
         val viewModel = viewModel(repository, reader)
         advanceUntilIdle()
 
+        viewModel.enqueueTag(FakeHandle(1))
         viewModel.enqueueTag(FakeHandle(1))
         viewModel.enqueueTag(FakeHandle(2))
         advanceUntilIdle()
@@ -60,11 +61,47 @@ class MainViewModelTest {
         viewModel.enqueueTag(FakeHandle(1))
         advanceUntilIdle()
 
-        assertEquals(listOf(1, 2, 1), reader.readOrder)
+        assertEquals(listOf(1, 2), reader.readOrder)
         assertEquals(2, viewModel.uiState.value.tags.size)
         assertNull(viewModel.uiState.value.activeScanUid)
         assertEquals(0, viewModel.uiState.value.queuedScanCount)
         assertEquals(badgeAfterAdd, viewModel.uiState.value.newTagBadge)
+    }
+
+    @Test
+    fun `stored UID reports duplicate without invoking the reader`() = runTest(dispatcher) {
+        val stored = record(1)
+        val reader = FakeReader()
+        val viewModel = viewModel(FakeRepository(listOf(stored)), reader)
+        advanceUntilIdle()
+
+        val message = async { viewModel.effects.first() }
+        viewModel.enqueueTag(FakeHandle(1))
+        advanceUntilIdle()
+
+        assertTrue(reader.readOrder.isEmpty())
+        assertEquals(
+            R.string.toast_tag_duplicate,
+            (message.await() as MainUiEffect.ShowMessage).messageResource,
+        )
+    }
+
+    @Test
+    fun `scan queue rejects entries beyond its capacity`() = runTest(dispatcher) {
+        val reader = FakeReader()
+        val viewModel = viewModel(FakeRepository(), reader)
+
+        repeat(MainViewModel.SCAN_QUEUE_CAPACITY + 1) { index ->
+            viewModel.enqueueTag(FakeHandle(index + 1))
+        }
+
+        assertEquals(MainViewModel.SCAN_QUEUE_CAPACITY, viewModel.uiState.value.queuedScanCount)
+        advanceUntilIdle()
+        assertEquals(
+            (1..MainViewModel.SCAN_QUEUE_CAPACITY).toList(),
+            reader.readOrder,
+        )
+        assertEquals(0, viewModel.uiState.value.queuedScanCount)
     }
 
     @Test
@@ -80,6 +117,37 @@ class MainViewModelTest {
 
         assertEquals(listOf(1, 2), reader.readOrder)
         assertEquals(listOf(2), viewModel.uiState.value.tags.map { it.uid.last().toInt() })
+
+        viewModel.enqueueTag(FakeHandle(1))
+        advanceUntilIdle()
+        assertEquals(listOf(1, 2, 1), reader.readOrder)
+    }
+
+    @Test
+    fun `unsupported scan reports the dedicated message`() = runTest(dispatcher) {
+        val unsupportedReader = object : NfcTagReader {
+            override suspend fun read(
+                tag: NfcTagHandle,
+                onProgress: (String) -> Unit,
+            ): TagRecord = throw UnsupportedTagException("Unsupported test tag")
+        }
+        val viewModel = MainViewModel(
+            application,
+            SavedStateHandle(),
+            FakeRepository(),
+            unsupportedReader,
+            FakeExporter(),
+        )
+        advanceUntilIdle()
+
+        val message = async { viewModel.effects.first() }
+        viewModel.enqueueTag(FakeHandle(1))
+        advanceUntilIdle()
+
+        assertEquals(
+            R.string.toast_tag_unsupported,
+            (message.await() as MainUiEffect.ShowMessage).messageResource,
+        )
     }
 
     @Test

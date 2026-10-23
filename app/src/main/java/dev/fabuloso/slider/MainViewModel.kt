@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 
 data class MainUiState(
     val tags: List<TagRecord> = emptyList(),
@@ -97,7 +99,9 @@ class MainViewModel(
     private val effectChannel = Channel<MainUiEffect>(Channel.BUFFERED)
     val effects = effectChannel.receiveAsFlow()
 
-    private val scanQueue = Channel<NfcTagHandle>(Channel.UNLIMITED)
+    private val scanQueue = Channel<NfcTagHandle>(SCAN_QUEUE_CAPACITY)
+    private val pendingScanUids: MutableSet<String> =
+        Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
     private val initializationComplete = CompletableDeferred<Unit>()
 
     init {
@@ -107,13 +111,25 @@ class MainViewModel(
     }
 
     fun enqueueTag(tag: NfcTagHandle) {
+        val uidHex = tag.uidMsb.toHexCompact()
+        if (!pendingScanUids.add(uidHex)) return
+
+        val state = mutableUiState.value
+        if (!state.isLoading && state.tags.any { it.uidHex == uidHex }) {
+            pendingScanUids.remove(uidHex)
+            showMessage(R.string.toast_tag_duplicate)
+            return
+        }
+
         mutableUiState.update { state ->
             state.copy(queuedScanCount = state.queuedScanCount + 1)
         }
         if (scanQueue.trySend(tag).isFailure) {
+            pendingScanUids.remove(uidHex)
             mutableUiState.update { state ->
                 state.copy(queuedScanCount = (state.queuedScanCount - 1).coerceAtLeast(0))
             }
+            showMessage(R.string.toast_scan_queue_full)
         }
     }
 
@@ -286,15 +302,26 @@ class MainViewModel(
                     readAndStoreTag(tag, uidHex)
                 } finally {
                     mutableUiState.update { it.copy(activeScanUid = null) }
+                    pendingScanUids.remove(uidHex)
                 }
             }
         }
     }
 
     private suspend fun readAndStoreTag(tag: NfcTagHandle, uidHex: String) {
+        if (repository.records.value.any { it.uidHex == uidHex }) {
+            Log.i(TAG, "Skipping stored tag $uidHex")
+            showMessage(R.string.toast_tag_duplicate)
+            return
+        }
+
         Log.i(TAG, "Reading UID $uidHex")
         val record = try {
             tagReader.read(tag) { Log.d(TAG, it) }
+        } catch (error: UnsupportedTagException) {
+            Log.w(TAG, "Unsupported tag: ${error.message}")
+            showMessage(R.string.toast_tag_unsupported)
+            return
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (error: Throwable) {
@@ -357,6 +384,7 @@ class MainViewModel(
     companion object {
         private const val TAG = "SLIder"
         private const val STATE_PENDING_EXPORT_UID = "pendingExportUid"
+        internal const val SCAN_QUEUE_CAPACITY = 8
     }
 
 }

@@ -39,7 +39,12 @@ jobs:
         run: chmod +x gradlew
 
       - name: Test and build APK
-        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug --stacktrace
+        run: >-
+          ./gradlew
+          :app:testDebugUnitTest
+          :app:lintDebug
+          :app:assembleDebug
+          --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v7

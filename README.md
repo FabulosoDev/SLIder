@@ -86,7 +86,7 @@ NFC reads are processed in order on a background worker. Loading, persistence, d
 
 ## Architecture and tests
 
-The activity owns Android UI and NFC callbacks, while `MainViewModel` retains screen state and queued work across configuration changes. NFC protocol handling, SharedPreferences persistence, and file export are exposed through testable interfaces and use coroutines for blocking work.
+The activity coordinates the Android UI, while focused components own the NFC lifecycle, message banner, and swipe behavior. `MainViewModel` retains screen state and queued work across configuration changes. NFC protocol handling, SharedPreferences persistence, and file export are exposed through testable interfaces and use coroutines for blocking work.
 
 Run the local unit and Robolectric tests with:
 
