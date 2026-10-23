@@ -9,113 +9,125 @@
     android:paddingTop="0dp"
     android:paddingEnd="16dp">
 
-    <Toolbar
-        android:id="@+id/topAppBar"
-        android:layout_width="match_parent"
-        android:layout_height="40dp"
-        android:background="@color/screen_background"
-        android:contentInsetStart="8dp"
-        android:contentInsetEnd="0dp">
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:importantForAccessibility="no"
-                android:src="@mipmap/ic_launcher" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="@string/app_name"
-                android:textColor="@color/primary_text"
-                android:textSize="20sp" />
-        </LinearLayout>
-    </Toolbar>
-
-    <LinearLayout
-        android:id="@+id/messageBanner"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/bg_message_info"
-        android:gravity="center_vertical"
-        android:accessibilityLiveRegion="polite"
-        android:importantForAccessibility="yes"
-        android:minHeight="48dp"
-        android:orientation="horizontal"
-        android:paddingStart="16dp"
-        android:paddingEnd="4dp"
-        android:visibility="gone">
-
-        <TextView
-            android:id="@+id/txtMessageBanner"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textColor="@color/message_info_content"
-            android:textSize="14sp" />
-
-        <Button
-            android:id="@+id/btnMessageAction"
-            style="?android:attr/borderlessButtonStyle"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:minWidth="64dp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:text="@string/undo"
-            android:textAllCaps="false"
-            android:textColor="@color/message_info_content"
-            android:textStyle="bold"
-            android:visibility="gone" />
-
-        <ImageButton
-            android:id="@+id/btnDismissMessage"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/dismiss_message"
-            android:padding="12dp"
-            android:src="@drawable/ic_close"
-            android:tint="@color/message_info_content" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:baselineAligned="false"
-        android:orientation="horizontal"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp">
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/column_uid"
-            android:textColor="@color/primary_text"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="12dp"
-        android:background="@color/list_divider" />
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/listTags"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:clipToPadding="false"
-        android:paddingBottom="16dp" />
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <Toolbar
+                android:id="@+id/topAppBar"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:background="@color/screen_background"
+                android:contentInsetStart="8dp"
+                android:contentInsetEnd="0dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:importantForAccessibility="no"
+                        android:src="@mipmap/ic_launcher" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="@string/app_name"
+                        android:textColor="@color/primary_text"
+                        android:textSize="20sp" />
+                </LinearLayout>
+            </Toolbar>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:baselineAligned="false"
+                android:orientation="horizontal"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/column_uid"
+                    android:textColor="@color/primary_text"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="12dp"
+                android:background="@color/list_divider" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/listTags"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:paddingBottom="16dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/messageBanner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:accessibilityLiveRegion="polite"
+            android:background="@drawable/bg_message_info"
+            android:elevation="8dp"
+            android:gravity="center_vertical"
+            android:importantForAccessibility="yes"
+            android:minHeight="48dp"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="4dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/txtMessageBanner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="@color/message_info_content"
+                android:textSize="14sp" />
+
+            <Button
+                android:id="@+id/btnMessageAction"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:minWidth="64dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="@string/undo"
+                android:textAllCaps="false"
+                android:textColor="@color/message_info_content"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <ImageButton
+                android:id="@+id/btnDismissMessage"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/dismiss_message"
+                android:padding="12dp"
+                android:src="@drawable/ic_close"
+                android:tint="@color/message_info_content" />
+        </LinearLayout>
+    </FrameLayout>
 </LinearLayout>
