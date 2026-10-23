@@ -295,6 +295,10 @@ class MainViewModel(
         Log.i(TAG, "Reading UID $uidHex")
         val record = try {
             tagReader.read(tag) { Log.d(TAG, it) }
+        } catch (error: UnsupportedTagException) {
+            Log.w(TAG, "Unsupported tag: ${error.message}")
+            showMessage(R.string.toast_tag_unsupported)
+            return
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (error: Throwable) {
