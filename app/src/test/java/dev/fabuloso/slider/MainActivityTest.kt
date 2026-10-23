@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.nfc.NfcAdapter
 import android.provider.Settings
+import android.widget.Toolbar
 import androidx.test.core.app.ApplicationProvider
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -29,10 +30,19 @@ class MainActivityTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         shadowOf(context.packageManager).setSystemFeature(PackageManager.FEATURE_NFC, true)
         nfcAdapter = requireNotNull(NfcAdapter.getDefaultAdapter(context))
+        context.getSharedPreferences(AppSettings.PREFERENCES_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .commit()
     }
 
     @After
     fun tearDown() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.getSharedPreferences(AppSettings.PREFERENCES_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .commit()
         ShadowNfcAdapter.reset()
     }
 
@@ -65,6 +75,23 @@ class MainActivityTest {
 
         assertTrue(shadowAdapter.isInReaderMode)
         assertEquals(null, shadowOf(activity).nextStartedActivity)
+        controller.pause().stop().destroy()
+    }
+
+    @Test
+    fun `low data rate can be enabled from the overflow menu`() {
+        shadowOf(nfcAdapter).setEnabled(true)
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        val menu = activity.findViewById<Toolbar>(R.id.topAppBar).menu
+        val lowDataRateItem = menu.findItem(R.id.actionLowDataRate)
+
+        assertFalse(lowDataRateItem.isChecked)
+
+        assertTrue(menu.performIdentifierAction(R.id.actionLowDataRate, 0))
+
+        assertTrue(lowDataRateItem.isChecked)
+        assertTrue(AppSettings(activity).lowDataRateEnabled)
         controller.pause().stop().destroy()
     }
 }

@@ -46,6 +46,7 @@ import java.util.Date
 class MainActivity : ComponentActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var tagAdapter: TagListAdapter
+    private lateinit var appSettings: AppSettings
     private val viewModel: MainViewModel by viewModels()
     private var nfcAdapter: NfcAdapter? = null
     private var nfcSettingsLaunched = false
@@ -61,6 +62,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        appSettings = AppSettings(this)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         applySystemBarInsets()
@@ -114,8 +116,15 @@ class MainActivity : ComponentActivity() {
 
     private fun configureTopAppBar() {
         binding.topAppBar.inflateMenu(R.menu.main_menu)
+        binding.topAppBar.menu.findItem(R.id.actionLowDataRate)?.isChecked =
+            appSettings.lowDataRateEnabled
         binding.topAppBar.setOnMenuItemClickListener { item ->
             when (item.itemId) {
+                R.id.actionLowDataRate -> {
+                    item.isChecked = !item.isChecked
+                    appSettings.lowDataRateEnabled = item.isChecked
+                    true
+                }
                 R.id.actionDeleteAll -> {
                     confirmDeleteAll()
                     true

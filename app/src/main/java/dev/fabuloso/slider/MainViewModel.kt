@@ -83,7 +83,9 @@ class MainViewModel(
         application = application,
         savedStateHandle = savedStateHandle,
         repository = SharedPreferencesTagRepository(application),
-        tagReader = DefaultNfcTagReader(),
+        tagReader = DefaultNfcTagReader(
+            lowDataRate = { AppSettings(application).lowDataRateEnabled },
+        ),
         fileExporter = ContentResolverTagFileExporter(application.contentResolver),
     )
 
