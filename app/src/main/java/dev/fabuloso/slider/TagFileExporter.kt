@@ -34,11 +34,13 @@ class ContentResolverTagFileExporter(
 class TagShareFileCreator(
     private val cacheDirectory: File,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val currentTimeMillis: () -> Long = System::currentTimeMillis,
 ) {
     suspend fun create(record: TagRecord): File = withContext(ioDispatcher) {
         val shareDirectory = File(cacheDirectory, SHARE_DIRECTORY).apply {
             check(isDirectory || mkdirs()) { "Unable to create share directory" }
         }
+        deleteStaleFiles(shareDirectory)
         File(shareDirectory, TagFileNameFormatter.format(record)).apply {
             writeText(
                 FlipperNfcSerializer.serialize(
@@ -52,8 +54,17 @@ class TagShareFileCreator(
         }
     }
 
-    private companion object {
+    private fun deleteStaleFiles(shareDirectory: File) {
+        val staleBefore = currentTimeMillis() - SHARED_FILE_MAX_AGE_MS
+        shareDirectory.listFiles()
+            ?.asSequence()
+            ?.filter { it.isFile && it.lastModified() < staleBefore }
+            ?.forEach(File::delete)
+    }
+
+    companion object {
         const val SHARE_DIRECTORY = "shared_tags"
+        const val SHARED_FILE_MAX_AGE_MS = 24L * 60L * 60L * 1_000L
     }
 }
 
