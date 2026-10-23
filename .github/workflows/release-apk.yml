@@ -85,6 +85,7 @@ jobs:
         run: >-
           ./gradlew
           :app:testDebugUnitTest
+          :app:lintRelease
           :app:assembleRelease
           -PreleaseVersionName="$VERSION_NAME"
           -PreleaseVersionCode="$VERSION_CODE"
@@ -103,21 +104,6 @@ jobs:
           --verbose
           --print-certs
           "artifacts/SLIder-${VERSION_NAME}.apk"
-
-      - name: Create GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          apk="artifacts/SLIder-${VERSION_NAME}.apk"
-
-          if gh release view "$VERSION_NAME" >/dev/null 2>&1; then
-            gh release upload "$VERSION_NAME" "$apk" --clobber
-          else
-            gh release create "$VERSION_NAME" "$apk" \
-              --title "SLIder $VERSION_NAME" \
-              --generate-notes \
-              --verify-tag
-          fi
 
       - name: Create GitHub release
         env:
