@@ -126,8 +126,7 @@
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/dismiss_message"
                 android:padding="12dp"
-                android:src="@drawable/ic_close"
-                android:tint="@color/message_info_content" />
+                android:src="@drawable/ic_close" />
         </LinearLayout>
     </FrameLayout>
 </LinearLayout>
